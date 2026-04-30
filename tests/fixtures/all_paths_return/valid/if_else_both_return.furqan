@@ -1,0 +1,25 @@
+// D24 fixture #2 (valid) - both arms of if/else return.
+//
+// The canonical all-paths-return shape that uses an else branch.
+// Both the if-body and the else-body all-paths-return; the
+// IfStmt itself satisfies the recurrence; the function as a whole
+// passes D24.
+
+bismillah BothBranches {
+    authority: NAMING_MD
+    serves: purpose_hierarchy.balance_for_living_systems
+    scope: decide
+    not_scope: nothing_excluded
+}
+
+fn decide() -> Integrity | Incomplete {
+    if not present {
+        return Incomplete {
+            reason: "missing",
+            max_confidence: 0.5,
+            partial_findings: empty_list
+        }
+    } else {
+        return Integrity
+    }
+}

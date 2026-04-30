@@ -1,0 +1,30 @@
+// D24 fixture #4 (valid) - if-without-else followed by a bare
+// return.
+//
+// The IfStmt itself does NOT all-paths-return (no else, missing
+// fall-through path). But the containing sequence has a bare
+// return AFTER the if; the for-loop walks past the IfStmt and
+// hits the return on the next iteration. The fall-through path
+// is closed at the sequence level, not at the IfStmt level.
+//
+// This is the canonical "early-return" shape (one branch returns
+// early, the rest falls through to a default return) and it is
+// honest under D24.
+
+bismillah EarlyReturn {
+    authority: NAMING_MD
+    serves: purpose_hierarchy.balance_for_living_systems
+    scope: process
+    not_scope: nothing_excluded
+}
+
+fn process() -> Integrity | Incomplete {
+    if not valid {
+        return Incomplete {
+            reason: "invalid",
+            max_confidence: 0.5,
+            partial_findings: empty_list
+        }
+    }
+    return Integrity
+}

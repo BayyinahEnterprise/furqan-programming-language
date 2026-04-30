@@ -1,10 +1,40 @@
 # Furqan: Session Handoff
 
-This is the rolling handoff record for the Phase-2 prototype
-type-checker. The most recent verified state is at the top; prior
-session-closing summaries are appended below for the isnad. The
-next session begins by reading this file and the Furqan v1.0
-thesis paper.
+## Current state (v0.9.0)
+
+```
+Furqan v0.9.0 - Structural-Honesty Programming Language
+
+Primitives:        7 of 7 (bismillah, zahir/batin, additive-only,
+                   scan-incomplete, mizan, tanzil, ring-close)
+Extended checkers: D11 (status_coverage),
+                   D22 (return_type_match),
+                   D24 (all_paths_return)
+CLI:               furqan check <file.furqan>
+                   furqan check <file.furqan> --strict
+                   furqan version
+Tests:             453 passing in ~0.7s
+Keywords:          28
+Public surface:    42 / 38 / 4 (parser / checker / errors)
+Runtime deps:      0 (Python stdlib only)
+Python:            3.10+
+License:           Apache-2.0
+CI:                GitHub Actions on Python 3.10, 3.11, 3.12, 3.13
+```
+
+The four-leg return-type contract is fully closed:
+
+| Leg | Checker | Question |
+|---|---|---|
+| Presence | Ring-close R3 | "Did you return at all?" |
+| Path coverage | D24 all-paths-return | "Did every path return?" |
+| Type correctness | D22 return-type-match | "Did you return the right thing?" |
+| Consumer propagation | D11 status-coverage | "Do your callers preserve your type?" |
+
+This is the rolling handoff record. The most recent verified state
+appears in the session-by-session log below; prior session-closing
+summaries are kept for the isnad. The next session begins by
+reading this file and the Furqan v1.0 thesis paper.
 
 ---
 
@@ -13,18 +43,18 @@ thesis paper.
 | Metric                            | Value                                                |
 |-----------------------------------|------------------------------------------------------|
 | Phase                             | 3 (post-Phase-2 polish + extensions; runtime not yet) |
-| Sub-phase                         | D11, status-coverage (consumer-side scan-incomplete dual) (**SHIPPED**) |
+| Sub-phase                         | D11 - status-coverage (consumer-side scan-incomplete dual) (**SHIPPED**) |
 | Primitives implemented            | **7 of 7 core** + D11 checker extension              |
-| Test count                        | **366 passing in 0.47s** (v0.7.1 baseline: 334; net +32) |
+| Test count                        | **366 passing in 0.47s** (Session 1.9 baseline: 334; net +32) |
 | Test files                        | 13 (added `test_status_coverage`)                    |
-| Public symbols on `furqan.parser` | 42 (unchanged, D11 adds no AST nodes)               |
+| Public symbols on `furqan.parser` | 42 (unchanged - D11 adds no AST nodes)               |
 | Public symbols on `furqan.checker`| 32 (was 29; +3 status-coverage entry points)         |
 | Public symbols on `furqan.errors` | 4 (unchanged)                                        |
 | Runtime dependencies              | **0** (Python stdlib only)                           |
-| Reserved keywords                 | 28 (unchanged, D11 introduces no keywords)          |
+| Reserved keywords                 | 28 (unchanged - D11 introduces no keywords)          |
 | Fixtures                          | + status_coverage(4 valid + 3 invalid)               |
 | Package version                   | `0.8.0` (minor bump for new public exports + new checker module) |
-| Compliance state at handoff       | **COMPLIANT**, producer-side AND consumer-side scan-incomplete discipline now closed; capstone integration test still green |
+| Compliance state at handoff       | **COMPLIANT** - producer-side AND consumer-side scan-incomplete discipline now closed; capstone integration test still green |
 | CI                                | GitHub Actions on Python 3.10-3.13; surface and version-sync gates green |
 
 ### What shipped in Session 1.10
@@ -36,9 +66,9 @@ thesis paper.
 * CHECKER.md §9 documenting the consumer-side discipline and the local-scope limitation
 * CHANGELOG v0.8.0 entry registering D25 and D26 as deferred
 
-### Closing register
+### Munafiq Protocol closing register
 
-**Test count delta (Tier 1):** 334 to 366 in 0.47s. Verified by `pytest --collect-only` and full-suite run.
+**Test count delta (Tier 1):** 334 -> 366 in 0.47s. Verified by `pytest --collect-only` and full-suite run.
 
 **Tier-tagged claims:**
 
@@ -49,11 +79,11 @@ thesis paper.
 **Honest null results:**
 
 * D11 only resolves callees within the same module. A call to a function defined in another module silently passes (it cannot be proved or disproved as a producer at this layer). A future cross-module pass (D23) will close this gap.
-* D11 detects collapse at the return-type level only; a caller that uses `if/else` to inspect both arms of the union (rather than propagating in the return type) is currently flagged because the return type still narrows. This is the D26 limitation: branch-level exhaustiveness needs control-flow analysis. Acknowledged at the diagnostic-text level (the minimal_fix says "branch-level exhaustiveness checking is registered as D26").
+* D11 detects collapse at the return-type level only; a caller that uses `if/else` to inspect both arms of the union (rather than propagating in the return type) is currently flagged because the return type still narrows. This is the D26 limitation - branch-level exhaustiveness needs control-flow analysis. Acknowledged at the diagnostic-text level (the minimal_fix says "branch-level exhaustiveness checking is registered as D26").
 * `_is_integrity_incomplete_union` is replicated locally in status_coverage.py rather than imported from incomplete.py because the equivalent helper there is underscore-prefixed (private). The two implementations are textually identical; a future polish patch could promote the one in incomplete.py to public and have status_coverage import it. The string constants (`INTEGRITY_TYPE_NAME`, `INCOMPLETE_TYPE_NAME`) ARE imported from the public surface so the canonical names live in exactly one place.
 * No fixtures failed to express their intent. No tests pass for the wrong reason.
 
-**Demo readiness, status-collapse path:**
+**Demo readiness - status-collapse path:**
 
 A novel inline module exercising the canonical S1 collapse:
 
@@ -69,23 +99,22 @@ fn report(f: Integrity) -> Integrity {
 
 ### Open items for next session
 
-* **D9 / D20 / D23**, multi-module / cross-module analysis (cycle detection, ring-close type resolution, status-coverage producer resolution). These three deferred items share the cross-module-graph machinery; a single Phase 3 module-loader pass closes all three.
-* **D25 (NEW)**, transitive status-collapse detection.
-* **D26 (NEW)**, branch-level exhaustiveness on union returns.
+* **D9 / D20 / D23** - Multi-module / cross-module analysis (cycle detection, ring-close type resolution, status-coverage producer resolution). These three deferred items share the cross-module-graph machinery; a single Phase 3 module-loader pass closes all three.
+* **D25 (NEW)** - Transitive status-collapse detection.
+* **D26 (NEW)** - Branch-level exhaustiveness on union returns.
 * **D11-D17** carryover items from earlier sessions (max_confidence range, mizan runtime, etc.).
 
 **Next phase:** Phase 3 runtime evaluator OR cross-module pass (D9/D20/D23/D25 batch). Polish-patch protocol still applies.
 
 ---
 
-
 ## Verified state at Session 1.8 close (Phase 2.9 shipped, COMPLIANT, RING CLOSED)
 
 | Metric                            | Value                                                |
 |-----------------------------------|------------------------------------------------------|
-| Phase                             | 2 (Prototype Type-Checker): **COMPLETE**            |
+| Phase                             | 2 (Prototype Type-Checker), **COMPLETE**            |
 | Sub-phase                         | 2.9, Ring-close (structural completion) (**SHIPPED**) |
-| Primitives implemented            | **7 of 7**, Bismillah, zahir/batin, additive-only, scan-incomplete, mizan, tanzil, **ring-close** |
+| Primitives implemented            | **7 of 7**: Bismillah, zahir/batin, additive-only, scan-incomplete, mizan, tanzil, **ring-close** |
 | Test count                        | **296 passing in 0.37s** (Session 1.7 baseline: 252; net +44) |
 | Test files                        | 10 (added `test_ring_close`)                         |
 | Public symbols on `furqan.parser` | 42 (unchanged, ring-close adds no AST nodes)        |
@@ -106,7 +135,7 @@ fn report(f: Integrity) -> Integrity {
 - `RingCloseDiagnostic = Marad | Advisory` union as the public return type from `check_ring_close`
 - `check_ring_close_strict` raises only on Marads (R1, R3); Advisories (R2, R4) are informational and do not fail the strict path
 - 44 new tests (8 sweep + 6 R1 + 5 R2 + 5 R3 + 4 R4 + 5 strict + 2 render + 1 surface + 2 capstone + 1 reflexivity + others)
-- **The seven-primitive integration capstone** (`closed_ring_with_all_primitives.furqan`): a single module passing every Phase 2.x checker
+- **The seven-primitive integration capstone** (`closed_ring_with_all_primitives.furqan`), a single module passing every Phase 2.x checker
 - Pinned-literal version sync correction: `furqan.__version__` advanced from "0.5.0" (drifted) to "0.7.0" matching `pyproject.toml`
 - CHANGELOG v0.7.0 entry registering D22, D23, D24 as deferred
 
@@ -117,7 +146,7 @@ fn report(f: Integrity) -> Integrity {
 **Tier-tagged claims:**
 
 - **Tier 1 (implemented + tested):** R1 undefined-type detection over both parameter and return positions; R1 per-arm firing on union return types; R1 silence on declared types and on the two builtins (`Integrity`, `Incomplete`); R2 empty-body advisory with body-non-emptiness defined as functions+types only (tanzil/mizan/additive_only metadata excluded); R2 short-circuits R1/R3/R4; R3 syntactic-presence detection recursing into IfStmt bodies; R3 silence on void functions; R4 unreferenced-type detection treating param-position references and union-arm references as referencing; strict variant raises on R1+R3 marads but NOT on R2+R4 advisories; **the seven-primitive integration capstone passes every Phase 2.x checker with zero marads**; pinned-literal version sync correction.
-- **Tier 2 (structural, designed, partially tested):** R1 builtin set is hardcoded to `{Integrity, Incomplete}`: works under the Phase 2.x assumption that the language has no other primitive types; D23 cross-module resolution would extend this set.
+- **Tier 2 (structural, designed, partially tested):** R1 builtin set is hardcoded to `{Integrity, Incomplete}`, works under the Phase 2.x assumption that the language has no other primitive types; D23 cross-module resolution would extend this set.
 - **Tier 3 (hypothesis, deferred):** D22 return-expression type-vs-signature matching; D23 cross-module ring analysis; D24 all-paths-return analysis.
 - **N=1 acknowledgement:** the seven-primitive witness is a single module. The structural completion property generalizes; other multi-primitive .furqan modules following the same shape will demonstrate the same end-to-end coverage.
 
@@ -169,7 +198,7 @@ Polish-patch protocol still applies. If post-2.9 cross-model audit identifies a 
 |-----------------------------------|------------------------------------------------------|
 | Phase                             | 2 (Prototype Type-Checker)                           |
 | Sub-phase                         | 2.8, Tanzil build-ordering checker (**SHIPPED**)    |
-| Primitives implemented            | **6 of 7**, Bismillah, zahir/batin, additive-only, scan-incomplete, mizan, tanzil |
+| Primitives implemented            | **6 of 7**: Bismillah, zahir/batin, additive-only, scan-incomplete, mizan, tanzil |
 | Test count                        | **252 passing in 0.38s** (Session 1.6 baseline: 219; net +33) |
 | Test files                        | 9 (`test_tokenizer`, `test_parser`, `test_bismillah`, `test_marad`, `test_zahir_batin`, `test_additive`, `test_incomplete`, `test_mizan`, `test_tanzil`) |
 | Public symbols on `furqan.parser` | 42 (was 40; +2 AST nodes)                            |
@@ -209,7 +238,7 @@ Polish-patch protocol still applies. If post-2.9 cross-model audit identifies a 
 
 - T1 fires per-occurrence (NOT first-occurrence-wins). Three `depends_on: Self` lines produce three T1 marads. T2 in contrast IS first-occurrence-wins (three duplicates produce two T2 marads, not three). The asymmetry is deliberate: T1 is a unary property of each entry; T2 is a binary relation requiring a prior occurrence. Documented in inline tests.
 - T3 short-circuits T1 and T2 on empty blocks (no entries to inspect). Deliberate diagnostic-quality choice; not a structural rule.
-- The `Advisory` class fields are `(primitive, message, location, suggestion)`: different from the prompt's §11.4 description (`primitive, diagnosis, location`). I preserved the existing class shape per additive-only invariant; the prompt's description was outdated relative to the deployed Advisory class.
+- The `Advisory` class fields are `(primitive, message, location, suggestion)`, different from the prompt's §11.4 description (`primitive, diagnosis, location`). I preserved the existing class shape per additive-only invariant; the prompt's description was outdated relative to the deployed Advisory class.
 - The reflexivity audit is a string-match grep, not static analysis; subtle defensive guards (e.g., `if module_path != REQUIRED_VALUE`) would evade it. Best-effort, not formal proof.
 - No fixtures failed to express their intent. No tests pass for the wrong reason.
 
@@ -255,7 +284,7 @@ Polish-patch protocol applies. If post-2.8 cross-model audit identifies a small 
 |-----------------------------------|------------------------------------------------------|
 | Phase                             | 2 (Prototype Type-Checker)                           |
 | Sub-phase                         | 2.7, Mizan three-valued calibration block (**SHIPPED**) |
-| Primitives implemented            | **5 of 7**, Bismillah, zahir/batin, additive-only, scan-incomplete, mizan |
+| Primitives implemented            | **5 of 7**: Bismillah, zahir/batin, additive-only, scan-incomplete, mizan |
 | Test count                        | **219 passing in 0.30s** (Session 1.5 baseline: 184; net +35) |
 | Test files                        | 8 (`test_tokenizer`, `test_parser`, `test_bismillah`, `test_marad`, `test_zahir_batin`, `test_additive`, `test_incomplete`, `test_mizan`) |
 | Distribution                      | tokenizer 50, parser 35, bismillah 19, marad 7, zahir_batin 22, additive 40, incomplete 24, mizan 22 |
@@ -349,7 +378,7 @@ Polish-patch protocol applies. If Perplexity's post-2.7 audit identifies a small
 | Public symbols on `furqan.checker`| 18                                                   |
 | Public symbols on `furqan.errors` | 4                                                    |
 | Package version                   | `0.4.0` → bumping to `0.5.0` this session for source-language additions (4 keywords + LT/GT punctuation + comparison grammar + mizan block grammar) |
-| Polish-patch protocol             | First-class (CONTRIBUTING.md §8): applied twice (Sessions 1.1, 1.4.1) |
+| Polish-patch protocol             | First-class (CONTRIBUTING.md §8), applied twice (Sessions 1.1, 1.4.1) |
 | Cross-model audit null-finding rate | Zero open findings at session open                 |
 
 ### Sync probes confirming Session 1.5 state at this open
@@ -371,7 +400,7 @@ Polish-patch protocol applies. If Perplexity's post-2.7 audit identifies a small
 |-----------------------------------|------------------------------------------------------|
 | Phase                             | 2 (Prototype Type-Checker)                           |
 | Sub-phase                         | 2.6, scan-incomplete return-type checker (**SHIPPED**) |
-| Primitives implemented            | **4 of 7**, Bismillah, zahir/batin, additive-only, scan-incomplete |
+| Primitives implemented            | **4 of 7**: Bismillah, zahir/batin, additive-only, scan-incomplete |
 | Test count                        | **184 passing in 0.32s** (Session 1.4.2 baseline: 149; net +35) |
 | Test files                        | 7 (`test_tokenizer`, `test_parser`, `test_bismillah`, `test_marad`, `test_zahir_batin`, `test_additive`, `test_incomplete`) |
 | Distribution                      | tokenizer 42, parser 30, bismillah 19, marad 7, zahir_batin 22, additive 40, incomplete 24 |
@@ -480,7 +509,7 @@ Polish-patch protocol applies. If Perplexity's post-2.6 audit identifies a small
 |-------------------------------------|------------------------------------------------------|
 | Phase                               | 2 (Prototype Type-Checker)                           |
 | Sub-phase                           | 2.5, additive-only module checker (**SHIPPED**)     |
-| Primitives implemented              | **3 of 7**, Bismillah scope + zahir/batin + additive-only |
+| Primitives implemented              | **3 of 7**: Bismillah scope + zahir/batin + additive-only |
 | Test count                          | **147 passing in 0.17s** (Session 1.3 baseline: 97; net +50) |
 | Test files                          | 6 (`test_tokenizer`, `test_parser`, `test_bismillah`, `test_marad`, `test_zahir_batin`, `test_additive`) |
 | Distribution                        | tokenizer 31, parser 30, bismillah 19, marad 7, zahir_batin 22, additive 38 |
@@ -502,7 +531,7 @@ Polish-patch protocol applies. If Perplexity's post-2.6 audit identifies a small
 - 6 new AST node classes (VersionLiteral, ExportDecl, RemovesEntry, RenamesEntry, MajorVersionBump, AdditiveOnlyModuleDecl)
 - New `Advisory` type (Session 1.1 D1 lands)
 - `furqan/checker/additive.py` implementing the four thesis §3.3 cases
-- `check_additive` (pure, in-memory) AND `check_module` (sidecar-aware): both shipped, no fallback invoked
+- `check_additive` (pure, in-memory) AND `check_module` (sidecar-aware), both shipped, no fallback invoked
 - 38 new additive-only tests + 12 new tokenizer tests (50 total)
 - `docs/internals/LEXER.md` (new) and `docs/internals/CHECKER.md` (new)
 - Updated NAMING.md §1.6 with six new keyword entries + per-keyword promotion rationale
@@ -537,7 +566,7 @@ Polish-patch protocol applies. If Perplexity's post-2.6 audit identifies a small
 
 The pipeline `Bayyinah MECHANISM_REGISTRY → .furqan transcription → remove export → run checker → show marad` runs end-to-end in under 0.2 seconds on existing fixtures and produces a structured marad with diagnosis + minimal_fix + regression_check naming the rule violated. Verified by behavioural spot-check.
 
-### Next session, Phase 2.6 (scan-incomplete): open items
+### Next session, Phase 2.6 (scan-incomplete), open items
 
 - D6, sidecar file discovery (CLI-layer concern; deferrable to Phase 3)
 - D7, `type_changes:` catalog entry (Phase 2.5+ design)
@@ -579,7 +608,7 @@ The natural next primitive (per Tanzil order) is **Phase 2.6, scan-incomplete re
 |--------------------------------|------------------------------------------------------|
 | Phase                          | 2 (Prototype Type-Checker)                           |
 | Sub-phase                      | 2.4, zahir/batin type checker (**SHIPPED**)         |
-| Primitives implemented         | **2 of 7**, Bismillah scope + zahir/batin           |
+| Primitives implemented         | **2 of 7**: Bismillah scope + zahir/batin           |
 | Test count                     | **97 passing in 0.15s** (Session 1.2 baseline: 75)   |
 | Test files                     | 5 (`test_tokenizer`, `test_parser`, `test_bismillah`, `test_marad`, `test_zahir_batin`) |
 | Distribution                   | tokenizer 19, parser 30, bismillah 19, marad 7, zahir_batin 22 |
@@ -604,9 +633,9 @@ The natural next primitive (per Tanzil order) is **Phase 2.6, scan-incomplete re
 
 ### Phase-2.4 deferred items registered for next session
 
-- **D3, Field-level access checking.** Phase 2.4 verifies layer access (`doc.zahir` vs `doc.batin`) but not field-name resolution. Belongs to Phase 2.5+ where module-level symbol tables enter.
-- **D4, Behavioral verification of `verify`.** Thesis §7 Failure Mode 1, verifying that a function named `verify` actually performs cross-layer comparison is beyond what a type system can guarantee. Recorded as a known limit, not a future fix.
-- **D5, Nested calls inside argument lists.** Bismillah scope checker doesn't see them. Flagged for Phase 2.7.
+- **D3: Field-level access checking.** Phase 2.4 verifies layer access (`doc.zahir` vs `doc.batin`) but not field-name resolution. Belongs to Phase 2.5+ where module-level symbol tables enter.
+- **D4: Behavioral verification of `verify`.** Thesis §7 Failure Mode 1, verifying that a function named `verify` actually performs cross-layer comparison is beyond what a type system can guarantee. Recorded as a known limit, not a future fix.
+- **D5: Nested calls inside argument lists.** Bismillah scope checker doesn't see them. Flagged for Phase 2.7.
 
 ### Next session, proposed scope
 
@@ -622,7 +651,7 @@ The Cow Episode warning continues: do not pre-build a multi-module type system b
 |--------------------------------|------------------------------------------------------|
 | Phase                          | 2 (Prototype Type-Checker)                           |
 | Sub-phase                      | 2.4, zahir/batin type checker (begun)               |
-| Primitives implemented         | 1 of 7, Bismillah scope (Sessions 1.0-1.2 shipped)  |
+| Primitives implemented         | 1 of 7: Bismillah scope (Sessions 1.0-1.2 shipped)  |
 | Test count                     | **75 passing in 0.11s** (Session 1.2 baseline)       |
 | Test files                     | 4 (`test_tokenizer`, `test_parser`, `test_bismillah`, `test_marad`) |
 | Distribution                   | tokenizer 19, parser 30, bismillah 19, marad 7       |
@@ -632,7 +661,7 @@ The Cow Episode warning continues: do not pre-build a multi-module type system b
 | Runtime dependencies           | **0** (Python stdlib only)                           |
 | Fixtures                       | 4 valid + 3 invalid + 3 parse_invalid + 1 known_limitation |
 | Reference modules              | none yet (Session 1.x is single-version)             |
-| Phase 2.4 first-task surface   | F1 (param-list parser), F2 (return-type parser): both replace, not harden |
+| Phase 2.4 first-task surface   | F1 (param-list parser), F2 (return-type parser), both replace, not harden |
 
 ### Sync probes confirming Session 1.2 state at this open
 
@@ -665,64 +694,64 @@ The Cow Episode warning continues: do not pre-build a multi-module type system b
 
 ## What shipped
 
-### Phase 2.0, scaffolding
+### Phase 2.0: scaffolding
 
 - `pyproject.toml` (src-layout, zero runtime deps, dev-only pytest)
-- `docs/NAMING.md`: naming discipline (Arabic + English alias rule,
+- `docs/NAMING.md`, naming discipline (Arabic + English alias rule,
   marad field structure, additive-only invariant)
-- `docs/CONTRIBUTING.md`: governance protocol
+- `docs/CONTRIBUTING.md`, governance protocol
   (COMPLIANT/PARTIAL/BLOCKED, five-step workflow, skip rule,
   dependency policy)
-- `README.md`: surface description + primitive roadmap
+- `README.md`, surface description + primitive roadmap
 
-### Phase 2.1, tokenizer
+### Phase 2.1: tokenizer
 
-- `src/furqan/parser/tokenizer.py`: hand-written single-pass
+- `src/furqan/parser/tokenizer.py`, hand-written single-pass
   tokenizer. Recognises 7 keywords (`bismillah`, `scope_block`,
   `authority`, `serves`, `scope`, `not_scope`, `fn`), identifiers,
   the punctuation `{ } ( ) : , .`, the multi-char `->`, and `//` line
   comments. Tracks line/column. Raises `TokenizeError` on unknown
   characters with a marad-style message that lists what is accepted.
-- `tests/test_tokenizer.py`: 19 tests pinning EOF behavior,
+- `tests/test_tokenizer.py`, 19 tests pinning EOF behavior,
   identifier rules, every keyword's lex kind, the
   bismillah/scope_block alias distinction at the lex level, line and
   column tracking, comment elision, and unknown-character errors.
 
-### Phase 2.2, AST + parser
+### Phase 2.2: AST + parser
 
-- `src/furqan/parser/ast_nodes.py`: `SourceSpan`, `CallRef`,
+- `src/furqan/parser/ast_nodes.py`, `SourceSpan`, `CallRef`,
   `BismillahBlock`, `FunctionDef`, `Module`. All frozen dataclasses;
   the AST is immutable.
-- `src/furqan/parser/parser.py`: recursive-descent parser. Enforces
+- `src/furqan/parser/parser.py`, recursive-descent parser. Enforces
   exactly-one-Bismillah-per-module, all four required Bismillah
   fields, accepts both Arabic and English aliases identically (with
   `alias_used` recorded), parses qualified-name lists, parses
   function bodies as call-reference sets (no expression grammar yet).
   First parse error raises `ParseError` with a precise SourceSpan.
-- `tests/test_parser.py`: 22 tests pinning each grammar rule, all
+- `tests/test_parser.py`, 22 tests pinning each grammar rule, all
   four required-field error cases (parametrized), uniqueness of the
   Bismillah block, alias equivalence, multi-function modules,
   trailing-token rejection, and span correctness.
 
-### Phase 2.3, Bismillah scope checker + paired fixtures
+### Phase 2.3: Bismillah scope checker + paired fixtures
 
-- `src/furqan/errors/marad.py`: diagnosis-structured error type per
+- `src/furqan/errors/marad.py`, diagnosis-structured error type per
   thesis §3.7. `Marad` is a frozen dataclass with the four required
   fields (`diagnosis`, `location`, `minimal_fix`, `regression_check`)
   plus a `primitive` tag. `MaradError` wraps it for raise-and-catch.
   `Marad.render()` produces the human-readable form.
-- `src/furqan/checker/bismillah.py`: the scope checker. Two entry
+- `src/furqan/checker/bismillah.py`, the scope checker. Two entry
   points: `check_module` (returns list of marads, fail-soft) and
   `check_module_strict` (raises on first marad, fail-fast). Walks
   every function's call references; flags any call whose head
   identifier appears in `not_scope`.
-- `tests/fixtures/valid/`: 3 paired-fixture files (a full module
+- `tests/fixtures/valid/`, 3 paired-fixture files (a full module
   that respects scope, a degenerate empty module, the
   `scope_block` alias variant).
-- `tests/fixtures/invalid/`: 3 paired-fixture files (direct
+- `tests/fixtures/invalid/`, 3 paired-fixture files (direct
   violation, qualified-call violation, violation in the second
   function only).
-- `tests/test_bismillah.py`: 13 tests. Two are parametrized fixture
+- `tests/test_bismillah.py`, 13 tests. Two are parametrized fixture
   sweeps (every valid file produces zero diagnostics; every invalid
   file produces ≥1). Eleven are named-property tests pinning
   diagnostic content, alias preservation in error messages, location
@@ -739,7 +768,8 @@ verification. The skip rule was not invoked.
 
 One unplanned but ~5-minute setup detour: the initial pyproject
 `package-dir = { "furqan" = "src" }` directive plus
-`packages.find` did not produce an importable `furqan` namespace, setuptools instead exposed each subpackage as a top-level module.
+`packages.find` did not produce an importable `furqan` namespace,
+setuptools instead exposed each subpackage as a top-level module.
 Resolved by switching to the standard `src/furqan/` src-layout. The
 intermediate state was caught by the first pytest run, not by review.
 
@@ -839,4 +869,3 @@ module = parse(src_path.read_text(), file=str(src_path))
 for marad in check_module(module):
     print(marad.render())
 ```
-

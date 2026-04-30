@@ -1,0 +1,43 @@
+// D24 fixture #7 (invalid) - nested gap: outer arms both have
+// inner if/else, but one inner branch is missing a return.
+//
+// The recurrence:
+//   _all_paths_return([outer_if]):
+//     outer if-body: bare return (True)
+//     outer else-body: contains an inner if/else
+//       inner if-body: bare return (True)
+//       inner else-body: side-effect call only (FALSE)
+//       inner if/else fails the both-branches gate
+//       outer else-body's sequence has no trailing return
+//       => outer else-body returns False
+//     outer if/else fails the both-branches gate
+//   outer sequence has no trailing return
+//   => returns False
+// Result: P1 fires. The fall-through is in the inner else.
+
+bismillah NestedGap {
+    authority: NAMING_MD
+    serves: purpose_hierarchy.balance_for_living_systems
+    scope: decide
+    not_scope: nothing_excluded
+}
+
+fn decide() -> Integrity | Incomplete {
+    if not outer {
+        return Incomplete {
+            reason: "outer failed",
+            max_confidence: 0.5,
+            partial_findings: empty_list
+        }
+    } else {
+        if not inner {
+            return Incomplete {
+                reason: "inner failed",
+                max_confidence: 0.5,
+                partial_findings: empty_list
+            }
+        } else {
+            log_event(decision)
+        }
+    }
+}

@@ -206,7 +206,8 @@ structural primitives, `additive_only` and `major_version_bump`
 are compound declarators with no user-identifier collision risk;
 `removes` and `renames` are catalog-entry verbs whose grammatical
 position uniquely identifies them. The Phase 2.6 type names
-(`Integrity`, `Incomplete`) and Phase 2.4's `verify` are different, they could plausibly appear as user identifiers in unrelated code,
+(`Integrity`, `Incomplete`) and Phase 2.4's `verify` are different,
+they could plausibly appear as user identifiers in unrelated code,
 so they live in their respective checker layers, not the keyword
 table.
 

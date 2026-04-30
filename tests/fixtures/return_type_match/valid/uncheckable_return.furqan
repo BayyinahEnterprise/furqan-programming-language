@@ -1,0 +1,20 @@
+// D22 fixture #3 (valid) - uncheckable return expression produces
+// no diagnostic.
+//
+// The return expression is an IdentExpr (`data`), not an
+// IntegrityLiteral or IncompleteLiteral. The checker cannot
+// statically infer its type and emits no diagnostic - the honest
+// position when verification is impossible. A future Phase-3
+// data-flow pass may infer the type from `data`'s declaration
+// and produce a precise verdict.
+
+bismillah Variable {
+    authority: NAMING_MD
+    serves: purpose_hierarchy.balance_for_living_systems
+    scope: compute
+    not_scope: nothing_excluded
+}
+
+fn compute() -> Integrity {
+    return data
+}

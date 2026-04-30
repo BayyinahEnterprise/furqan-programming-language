@@ -252,8 +252,8 @@ an identifier (a dependent variable in user code would be named
 
 * **snake_case** for module names: `checker/bismillah.py`,
   `checker/zahir_batin.py`, `parser/tokenizer.py`.
-* The module name is the Arabic term (when one applies): `bismillah.py`
-  not `scope_block.py`: so the import path tracks the canonical name.
+* The module name is the Arabic term (when one applies), `bismillah.py`
+  not `scope_block.py`, so the import path tracks the canonical name.
   The English alias is implemented inside the module as a function or
   attribute alias.
 * No abbreviations in module names. `tokenizer`, not `tok`. `parser`,
@@ -337,4 +337,3 @@ thesis paper, the resolution goes to the lead author (Bilal Syed
 Arfeen) before code is written. **Silent invention of a new
 convention is the worst failure mode** (Ashraf, M1 principle). A loud
 question is acceptable; a guess that ships is not.
-

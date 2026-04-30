@@ -1,0 +1,17 @@
+// D22 fixture #1 (valid) - bare Integrity return matches bare
+// Integrity declared.
+//
+// The simplest matching case. The function declares -> Integrity
+// and the body returns Integrity. Inferred type "Integrity" is
+// in the accepted set {"Integrity"}; M1 does not fire.
+
+bismillah CorrectReturn {
+    authority: NAMING_MD
+    serves: purpose_hierarchy.balance_for_living_systems
+    scope: validate
+    not_scope: nothing_excluded
+}
+
+fn validate() -> Integrity {
+    return Integrity
+}

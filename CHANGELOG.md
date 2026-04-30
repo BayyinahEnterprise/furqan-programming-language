@@ -6,15 +6,231 @@ versioning follows [SemVer](https://semver.org/spec/v2.0.0.html).
 
 The Phase-2 prototype roadmap is the seven-primitive Tanzil ordering
 declared in `HANDOFF.md`. Each session's deliverables land additively
-on the prior session's surface; the additive-only invariant the
+on the prior session's surface, the additive-only invariant the
 type-checker enforces on user code is enforced on the type-checker
 itself (NAMING.md §6).
 
 ---
 
-## [0.8.0], 2026-04-30
+## [0.9.0] - 2026-04-30
 
-**Phase 3 / Session 1.10: D11 status-coverage checker.** The
+**Phase 3.1 / Session 1.13 - CLI entry point.** Furqan becomes a
+tool, not just a library. A judge or end user can now clone the
+repo, run `furqan check examples/clean_module.furqan`, and see the
+checker in action on a real file. The demo moment is three
+terminal commands: PASS on the clean module, MARAD on the status-
+collapse example, MARAD on the missing-return-path example.
+
+A minor-version bump (0.8.x -> 0.9.0) reflects new user-facing
+capability. No checker changes, no parser changes, no tokenizer
+changes; the CLI is a thin wrapper around the existing checker
+modules.
+
+### Added
+
+* **CLI entry point.** `python -m furqan` and (after pip install)
+  the standalone `furqan` command.
+  - `furqan check <file.furqan>` runs all 9 checkers and reports
+    Marad violations and Advisory notes.
+  - `furqan check <file.furqan> --strict` exits with code 3 on
+    any Marad.
+  - `furqan version` prints the installed version.
+  - `furqan help` (and bare invocation, `-h`, `--help`) prints
+    usage.
+* **Console script** registered in `pyproject.toml` under
+  `[project.scripts]`: `furqan = "furqan.__main__:main"`.
+* **Three example files** in `examples/`:
+  - `clean_module.furqan` (PASS - canonical honest shape)
+  - `status_collapse.furqan` (MARAD - D11 Case S1)
+  - `missing_return_path.furqan` (MARAD - D24 Case P1)
+* **18 new CLI tests** (`tests/test_cli.py`) covering exit codes,
+  output formatting, help/version, error paths, strict mode.
+
+### Exit code contract
+
+* `0` PASS - zero Marad diagnostics
+* `1` MARAD - at least one violation
+* `2` PARSE ERROR - file could not be parsed
+* `3` STRICT MODE failure - any Marad in --strict run
+
+### Tests
+
+* 435 -> 453 (+18). All Phase 2.x and earlier Phase 3 tests pass
+  identically.
+
+### Notes
+
+* The additive-only checker is NOT run in single-file mode. It
+  requires a prior-version module for comparison, which a single
+  .furqan input cannot supply. Cross-version checks live in the
+  test suite and the additive sidecar protocol; the CLI runs
+  the other 9 checkers.
+
+### Unchanged
+
+* Seven core primitives unchanged. Parser and tokenizer untouched.
+* 28 keywords (unchanged). 9 checker modules (unchanged from
+  v0.8.2).
+* Public surface 42 / 38 / 4 (parser / checker / errors).
+
+---
+
+## [0.8.2] - 2026-04-30
+
+**Phase 3 / Session 1.12 - D24 all-paths-return analysis.** The
+fourth leg of the return-type contract. Ring-close R3 (Phase 2.9)
+checks that a return statement EXISTS somewhere in a typed
+function's body. D24 (this release) checks that EVERY control-
+flow path through the body reaches a return statement.
+
+R3 catches the total absence ("you have no return at all").
+D24 catches the partial absence ("you have a return on some
+paths but not all"). The two compose: a function that fails R3
+does not need D24; a function that passes R3 but fails D24 has
+a silent fall-through.
+
+The analysis is exact for the current grammar. Furqan has
+exactly one branching construct (IfStmt with optional else, after
+D15). There are no loops, no switch/match, no exceptions, no
+early-exits other than return - so structural recursion is
+sufficient and gives exact (not approximate) results. When future
+grammar adds loops or match expressions, D24 needs extension; the
+extension is registered as D29 (full CFG analysis).
+
+A patch-level bump (0.8.1 -> 0.8.2) reflects new public exports
+without behavioural changes to any pre-existing checker. No new
+keywords, no new AST nodes, no parser changes.
+
+### Added
+
+* **D24 - All-paths-return analysis checker**
+  (`checker/all_paths_return.py`).
+  - **Case P1 (missing return path, Marad).** A function declares
+    a return type, has at least one return statement (passes R3),
+    but does NOT reach a return on every control-flow path.
+  - **R3 delineation.** A function with zero returns triggers R3
+    only; D24 stays silent on it via the `_any_return_exists`
+    short-circuit. No double-reporting.
+  - **Sequence-level path coverage.** An IfStmt without an else
+    does not by itself cover all paths, but a sequence containing
+    an else-less IfStmt followed by a bare return DOES - the
+    walker continues past the IfStmt and finds the trailing
+    return. Canonical "early-return then default" shape is
+    preserved.
+* Public surface additions on `furqan.checker`:
+  - `check_all_paths_return(module) -> list[Marad]`
+  - `check_all_paths_return_strict(module) -> Module`
+  - `ALL_PATHS_RETURN_PRIMITIVE_NAME = "all_paths_return"`
+
+### Fixture refactor (additive, not behavioural)
+
+* `tests/fixtures/ring_close/valid/closed_ring_with_all_primitives.furqan`
+  is updated to use `if/else` instead of two complementary `if`
+  blocks. The two-if pattern was structurally fine for the older
+  primitives but D24's exact path analysis (correctly) cannot
+  prove that `not is_encrypted(file)` and `is_encrypted(file)`
+  cover all paths without semantic information. Switching to
+  if/else preserves the witness as honest under every checker
+  including D24. The other two-if fixtures
+  (`scan_handles_both_paths.furqan`, `if_only_no_else.furqan`)
+  are left alone: their purpose is to test the no-else form
+  itself, not to be all-checker witnesses.
+
+### Tests
+
+* 402 -> 435 (+33). All Phase 2.x and earlier Phase 3 tests pass
+  identically.
+
+### Deferred items registered
+
+* **D29 - Full control-flow graph analysis.** When Furqan grammar
+  adds loops, match/switch, or other branching constructs, D24's
+  structural recursion is no longer sufficient. The extension is
+  a Phase 3+ CFG pass.
+
+### Unchanged
+
+* Seven core primitives unchanged. Parser and tokenizer untouched.
+* 28 keywords (unchanged).
+* `IfStmt.else_body` semantics unchanged (D24 reuses the existing
+  recursive descent shape).
+
+---
+
+## [0.8.1] - 2026-04-30
+
+**Phase 3 / Session 1.11 - D22 return-expression type matching.**
+The third leg of the return-type contract. Ring-close R3 (Phase
+2.9) verifies that a function with a declared return type contains
+at least one return statement. D11 status-coverage (v0.8.0)
+verifies that callers of producers honestly propagate the union.
+D22 (this release) verifies that the return statement's expression
+matches the declared return type. Together: R3 catches the missing
+return; D22 catches the wrong return; D11 catches the collapsed
+return.
+
+A patch-level bump (0.8.0 -> 0.8.1) reflects new public exports
+without behavioural changes to any pre-existing checker. No new
+keywords, no new AST nodes, no parser changes; D22 is a pure
+whole-module checker over the existing AST.
+
+### Added
+
+* **D22 - Return-expression type matching checker**
+  (`checker/return_type_match.py`).
+  - **Case M1 (return type mismatch, Marad).** A return
+    expression's statically-inferred type is not a member of the
+    declared return type's accepted set. Examples: function
+    declares `-> Integrity`, body returns `Incomplete {...}`;
+    function declares `-> CustomType`, body returns `Integrity`.
+  - **Inferrable expressions.** Only `IntegrityLiteral` and
+    `IncompleteLiteral` have statically-known types. Every other
+    expression (`IdentExpr`, `StringLiteral`, `NumberLiteral`,
+    `NotExpr`, `BinaryComparisonExpr`, `IdentList`) is uncheckable
+    and produces no diagnostic - the honest position when the
+    checker cannot verify the match.
+  - **Recurses into IfStmt body and else_body** (the Phase 3.0
+    D15 additive extension): a mismatch in either arm fires its
+    own M1, with per-occurrence discipline matching Tanzil T1 and
+    status-coverage S1.
+  - **No Advisory case.** An M2-style "uncheckable expression"
+    Advisory was considered and deliberately omitted: it would
+    fire on nearly every function that returns a variable,
+    drowning the M1 signal in noise.
+* Public surface additions on `furqan.checker`:
+  - `check_return_type_match(module) -> list[Marad]`
+  - `check_return_type_match_strict(module) -> Module`
+  - `RETURN_TYPE_MATCH_PRIMITIVE_NAME = "return_type_match"`
+
+### Tests
+
+* 366 -> 402 (+36). All Phase 2.x and earlier Phase 3 tests pass
+  identically; D22 is additive on the test surface.
+
+### Deferred items registered
+
+* **D27 - Type inference on `IdentExpr` returns.** Determining the
+  type of `return result` requires data-flow analysis (tracing
+  assignments and call return types). Phase 3+ work; overlaps with
+  the cross-module graph that D9/D20/D23 share.
+* **D28 - Cross-function return-type resolution.** `return scan(file)`
+  - what does `scan` return? Requires call-graph return-type
+  propagation. Phase 3+ work.
+
+### Unchanged
+
+* Seven core primitives unchanged. Parser and tokenizer untouched.
+* 28 keywords (unchanged from v0.7.1 / v0.8.0).
+* `IfStmt.else_body` semantics unchanged (D22 reuses the existing
+  recursive descent pattern).
+* CI workflow unchanged (still 3.10-3.13 matrix; the new tests
+  are picked up automatically; surface-count assertion uses `>=`).
+
+---
+
+## [0.8.0] - 2026-04-30
+
+**Phase 3 / Session 1.10 - D11 status-coverage checker.** The
 consumer-side dual of the Phase 2.6 scan-incomplete primitive.
 Where scan-incomplete polices the producer side (a function
 declaring `-> Integrity | Incomplete` must handle both arms),
@@ -25,7 +241,7 @@ honesty discipline for incompleteness: the possibility cannot be
 silently introduced (Phase 2.6) AND cannot be silently collapsed
 across a call boundary (D11).
 
-A minor-version bump (0.7.x to 0.8.0) reflects new public exports
+A minor-version bump (0.7.x -> 0.8.0) reflects new public exports
 and a new checker module. No new keywords, no new AST nodes, no
 parser changes; D11 is a pure whole-module checker over the
 existing AST. The seven core primitives stay closed; D11 is a
@@ -34,7 +250,7 @@ an eighth primitive.
 
 ### Added
 
-* **D11, status-coverage checker** (`checker/status_coverage.py`).
+* **D11 - Status-coverage checker** (`checker/status_coverage.py`).
   - **Case S1 (status collapse, Marad).** Caller returns a non-
     union type (or a union whose arms are not exactly Integrity
     and Incomplete) despite calling a producer. The possibility
@@ -44,7 +260,7 @@ an eighth primitive.
   - **Case S2 (status discard, Advisory).** Caller has no
     declared return type despite calling a producer. The result
     is silently discarded; may be intentionally effectful.
-    Advisory rather than Marad: the strict-variant gate does
+    Advisory rather than Marad - the strict-variant gate does
     not fire.
   - **S3 (honest propagation).** Caller is itself a producer;
     union preserved end-to-end. Zero diagnostics.
@@ -58,16 +274,16 @@ an eighth primitive.
 
 ### Tests
 
-* 334 to 366 (+32). All Phase 2.x and Phase 3.0 tests pass
+* 334 -> 366 (+32). All Phase 2.x and Phase 3.0 tests pass
   identically; D11 is additive on the test surface.
 
 ### Deferred items registered
 
-* **D25, transitive status-collapse detection.** A to B to C
+* **D25 - Transitive status-collapse detection.** A -> B -> C
   where C is a producer; D11 checks each call site
   independently and does not verify the full chain preserves the
   union. Phase 3+ work.
-* **D26, branch-level exhaustiveness.** Whether the caller
+* **D26 - Branch-level exhaustiveness.** Whether the caller
   inspects both arms of the union via if/else (rather than just
   return-type propagation) requires control-flow analysis (D13)
   and pattern matching (future grammar).
@@ -83,7 +299,7 @@ an eighth primitive.
 
 ---
 
-## [0.7.1], 2026-04-30
+## [0.7.1] (2026-04-30)
 
 **Phase 3.0 / Session 1.9.** Pre-push polish before the first
 GitHub release. Three deferred items land plus a CI workflow; no
@@ -99,7 +315,7 @@ seven-primitive ring stays closed.
   `test_version_sync` test as a named step so a version-bump PR
   that touches only one file gets a clearly labelled CI failure.
   README gains a CI badge.
-* **D15, `else` arm of an if statement.** New keyword `else` (28
+* **D15: `else` arm of an if statement.** New keyword `else` (28
   total). `IfStmt` gains an `else_body` field with default empty
   tuple (additive on the dataclass surface). The parser optionally
   consumes `else { ... }` after the if-body. The ring-close R3
@@ -108,7 +324,7 @@ seven-primitive ring stays closed.
   polarity: an `else` arm of `if not <expr>` runs when `<expr>` is
   true (incompleteness NOT ruled out), so bare-Integrity returns
   there fire Case A. NAMING.md §1.6 gains the new keyword row.
-* **D14, String escape sequences.** Four canonical escapes inside
+* **D14: String escape sequences.** Four canonical escapes inside
   a string literal: `\n` (newline), `\t` (tab), `\\` (literal
   backslash), `\"` (literal double quote). The tokenizer validates
   escape shape at lex time and raises `TokenizeError` on any
@@ -116,7 +332,7 @@ seven-primitive ring stays closed.
   `_unescape_string` when constructing the `StringLiteral` AST node;
   the `Token.lexeme` preserves the raw source form for round-trip
   tooling. LEXER.md §4 documents the supported set.
-* **D10, TokenizeError structured location.** `TokenizeError`
+* **D10: TokenizeError structured location.** `TokenizeError`
   exposes `line` / `column` integer attributes alongside the
   human-readable message. Both fields default to `0` so any caller
   that constructed the exception positionally still works. All
@@ -132,9 +348,9 @@ seven-primitive ring stays closed.
 
 ### Deferred items registered as next session work
 
-* **D26, Empty if-body warning.** A future Advisory case for an
+* **D26: Empty if-body warning.** A future Advisory case for an
   if-body with no statements (currently silently accepted).
-* **D27, `else if` chain syntactic sugar.** Currently a nested
+* **D27: `else if` chain syntactic sugar.** Currently a nested
   if inside an else-body works; a future polish patch may add
   shorthand syntax.
 
@@ -149,7 +365,7 @@ seven-primitive ring stays closed.
 
 ---
 
-## [0.7.0], 2026-04-30
+## [0.7.0] (2026-04-30)
 
 **Phase 2.9 / Session 1.8.** The **ring-close** checker, Furqan's
 seventh and final compile-time primitive, lands, completing the
@@ -178,18 +394,18 @@ additive-only invariant is preserved by construction.
 
 **Four checker cases.**
 
-* **R1, undefined type reference (Marad).** A function signature
+* **R1: undefined type reference (Marad).** A function signature
   (parameter or return type) names a type that is neither declared
   as a compound type in the module nor recognised as a builtin
   (`Integrity`, `Incomplete`).
-* **R2, empty module body (Advisory).** A module declares zero
+* **R2: empty module body (Advisory).** A module declares zero
   functions and zero compound types. The bismillah block alone (and
   any tanzil/mizan/additive_only metadata) does not constitute a
   working module.
-* **R3, missing return statement (Marad).** A function declares
+* **R3: missing return statement (Marad).** A function declares
   `-> T` but its body lacks any `ReturnStmt` (recursing into nested
   `IfStmt` bodies). All-paths-return analysis is registered as D24.
-* **R4, unreferenced type declaration (Advisory).** A compound
+* **R4: unreferenced type declaration (Advisory).** A compound
   type that no function in the module references in parameter or
   return position.
 
@@ -206,14 +422,14 @@ unchanged.
 
 **Deferred items registered.**
 
-* **D22, Return-expression type-vs-signature matching.** A function
+* **D22: Return-expression type-vs-signature matching.** A function
   declared `-> Document` that returns `Summary` is not flagged.
   Phase 2.9 enforces presence; type matching requires expression
   type-inference that the checker layer does not yet implement.
-* **D23, Cross-module ring analysis.** R1's resolution is local: a
+* **D23: Cross-module ring analysis.** R1's resolution is local: a
   type imported from another module would currently fire R1. Cross-
   module resolution requires the module-graph that D9 introduces.
-* **D24, All-paths-return analysis.** A function with `if` arms
+* **D24: All-paths-return analysis.** A function with `if` arms
   that each return but no else-branch syntactically satisfies R3.
   Control-flow analysis is a Phase 3 concern.
 
@@ -224,9 +440,10 @@ silent drift caught and corrected here).
 
 ---
 
-## [0.6.0], 2026-04-27
+## [0.6.0] (2026-04-27)
 
-**Phase 2.8 / Session 1.7.** The Tanzil build-ordering checker, Furqan's sixth compile-time primitive, lands. The thesis
+**Phase 2.8 / Session 1.7.** The Tanzil build-ordering checker,
+Furqan's sixth compile-time primitive, lands. The thesis
 mechanism is implementable; this session demonstrates it. This is
 the language-level transposition of build-ordering discipline
 (Bayyinah's cost-class taxonomy A/B/C/D ordering, generalized to
@@ -257,14 +474,22 @@ zero.
 The grammar surface is defined as "what parses these eight
 fixtures correctly" (Cow Episode anti-pattern check, 2:67-74).
 
-- `tests/fixtures/tanzil/valid/single_module_no_deps.furqan`: simplest valid case; one dependency.
-- `tests/fixtures/tanzil/valid/multiple_deps.furqan`: two distinct dependencies.
-- `tests/fixtures/tanzil/valid/no_tanzil_block.furqan`: pre-2.8 baseline; no tanzil block at all.
-- `tests/fixtures/tanzil/valid/tanzil_with_types_and_functions.furqan`: non-interference with mizan + functions.
-- `tests/fixtures/tanzil/invalid/self_dependency.furqan`: Case T1: trivial cycle. **The load-bearing demo fixture.**
-- `tests/fixtures/tanzil/invalid/duplicate_dependency.furqan`: Case T2: same module path declared twice.
-- `tests/fixtures/tanzil/invalid/empty_block.furqan`: Case T3 (Advisory, not Marad): zero dependency entries.
-- `tests/fixtures/tanzil/invalid/unknown_field.furqan`: parser-layer enforcement (NOT a checker case).
+- `tests/fixtures/tanzil/valid/single_module_no_deps.furqan`,
+  simplest valid case; one dependency.
+- `tests/fixtures/tanzil/valid/multiple_deps.furqan`,
+  two distinct dependencies.
+- `tests/fixtures/tanzil/valid/no_tanzil_block.furqan`,
+  pre-2.8 baseline; no tanzil block at all.
+- `tests/fixtures/tanzil/valid/tanzil_with_types_and_functions.furqan`
+ , non-interference with mizan + functions.
+- `tests/fixtures/tanzil/invalid/self_dependency.furqan`,
+  Case T1: trivial cycle. **The load-bearing demo fixture.**
+- `tests/fixtures/tanzil/invalid/duplicate_dependency.furqan`,
+  Case T2: same module path declared twice.
+- `tests/fixtures/tanzil/invalid/empty_block.furqan`,
+  Case T3 (Advisory, not Marad): zero dependency entries.
+- `tests/fixtures/tanzil/invalid/unknown_field.furqan`,
+  parser-layer enforcement (NOT a checker case).
 
 **Phase 2.8.1, tokenizer additions.**
 
@@ -276,9 +501,9 @@ Total reserved keywords across phases: **27** (was 25).
 
 **Phase 2.8.2, AST nodes (two additions).**
 
-- `DependencyEntry(module_path, span)`: single
+- `DependencyEntry(module_path, span)`, single
   `depends_on: <ModulePath>` line inside a tanzil block.
-- `TanzilDecl(name, dependencies, span)`: top-level tanzil
+- `TanzilDecl(name, dependencies, span)`, top-level tanzil
   build-ordering block. The `dependencies` tuple preserves source
   order (load-bearing for the T2 first-occurrence-wins discipline).
 
@@ -300,9 +525,10 @@ F1/F2 discipline preserved. No opaque eaters in any new parser.
 
 Public entry points:
 
-- `check_tanzil(module: Module) -> list[TanzilDiagnostic]`: pure fail-soft check. Returns Marads (T1, T2) and Advisories
+- `check_tanzil(module: Module) -> list[TanzilDiagnostic]`,
+  pure fail-soft check. Returns Marads (T1, T2) and Advisories
   (T3) intermixed in source order.
-- `check_tanzil_strict(module: Module) -> Module`: fail-fast
+- `check_tanzil_strict(module: Module) -> Module`, fail-fast
   variant. Raises on the first Marad; **Advisories do NOT
   trigger the strict path** (informational by design, same as
   the additive-only checker's undeclared-rename Advisory).
@@ -329,7 +555,7 @@ Public constant:
 
 **Phase 2.8.5, tests (33 additions).**
 
-- `tests/test_tanzil.py`: 22 tests covering the parametrized
+- `tests/test_tanzil.py`, 22 tests covering the parametrized
   fixture sweep (4 valid + 3 checker-eligible invalid; the
   unknown_field fixture is exercised by a parser test, not the
   tanzil-checker sweep), per-case named property tests (T1
@@ -406,18 +632,18 @@ diagnostics = check_tanzil(module)
 
 ### Deferred, registered as Session-1.8+ items
 
-- **D20, Multi-module tanzil graph analysis.** Topological sort
+- **D20: Multi-module tanzil graph analysis.** Topological sort
   across modules, cross-module cycle detection, existence
   verification of depended-on modules. Phase 3+ work; the
   single-module declaration surface is the Phase 2.8 contribution.
-- **D21, Version constraints on dependencies.** A future
+- **D21: Version constraints on dependencies.** A future
   grammar extension might permit `depends_on: CoreModule >= v0.3.0`.
   Requires extending the dependency-entry grammar with version
   comparisons. Future-fixture-driven.
 
 ---
 
-## [0.5.0], 2026-04-25
+## [0.5.0] (2026-04-25)
 
 **Phase 2.7 / Session 1.6.** The Mizan three-valued calibration
 block parser and syntactic well-formedness checker, Furqan's
@@ -464,17 +690,25 @@ zero.
 The grammar surface is defined as "what parses these eight
 fixtures correctly" (Cow Episode anti-pattern check, 2:67-74).
 
-- `tests/fixtures/mizan/valid/detection_threshold.furqan`: thesis §Primitive 4 example 1 verbatim. **The load-bearing
+- `tests/fixtures/mizan/valid/detection_threshold.furqan`,
+  thesis §Primitive 4 example 1 verbatim. **The load-bearing
   demo fixture.**
-- `tests/fixtures/mizan/valid/compression_ratio.furqan`: thesis §Primitive 4 example 2 verbatim.
-- `tests/fixtures/mizan/valid/with_string_calibration.furqan`: bil_qist with a string-literal argument.
-- `tests/fixtures/mizan/valid/comparison_with_numbers.furqan`: reversed comparison orientation (`0.05 > false_positive_rate`).
-- `tests/fixtures/mizan/invalid/missing_la_tatghaw.furqan`: Case M1: missing required field.
-- `tests/fixtures/mizan/invalid/duplicate_field.furqan`: Case M2: duplicate field.
-- `tests/fixtures/mizan/invalid/unknown_field.furqan`: M3 routed to **parser layer** (not checker). Parses to a
+- `tests/fixtures/mizan/valid/compression_ratio.furqan`,
+  thesis §Primitive 4 example 2 verbatim.
+- `tests/fixtures/mizan/valid/with_string_calibration.furqan`,
+  bil_qist with a string-literal argument.
+- `tests/fixtures/mizan/valid/comparison_with_numbers.furqan`,
+  reversed comparison orientation (`0.05 > false_positive_rate`).
+- `tests/fixtures/mizan/invalid/missing_la_tatghaw.furqan`,
+  Case M1: missing required field.
+- `tests/fixtures/mizan/invalid/duplicate_field.furqan`,
+  Case M2: duplicate field.
+- `tests/fixtures/mizan/invalid/unknown_field.furqan`,
+  M3 routed to **parser layer** (not checker). Parses to a
   ParseError with a pinned diagnostic text per §6.4 routing
   rationale.
-- `tests/fixtures/mizan/invalid/out_of_order_fields.furqan`: Case M4: fields in non-canonical order.
+- `tests/fixtures/mizan/invalid/out_of_order_fields.furqan`,
+  Case M4: fields in non-canonical order.
 
 Plus `tests/fixtures/parse_invalid/mizan_chained_comparison.furqan`
 pinning the chained-comparison rejection rule.
@@ -493,13 +727,13 @@ underscore convention for multi-word phrases (NAMING.md §1.7).
 **Phase 2.7.2, AST nodes (four additions).**
 
 - `ComparisonOp`: enum with `LT` and `GT` members.
-- `BinaryComparisonExpr(left, op, right, span)`: binary
+- `BinaryComparisonExpr(left, op, right, span)`, binary
   comparison expression. The grammar is non-associative; chained
   forms are rejected at parse time.
-- `MizanField(name, value, span)`: single `name: value` line
+- `MizanField(name, value, span)`, single `name: value` line
   inside a mizan block; `name` is one of the three canonical
   Arabic strings.
-- `MizanDecl(name, fields, span)`: top-level mizan calibration
+- `MizanDecl(name, fields, span)`, top-level mizan calibration
   block. The `fields` tuple preserves source order (load-bearing
   for M4 out-of-order detection) and may contain duplicates
   (load-bearing for M2 duplicate detection).
@@ -525,9 +759,9 @@ F1/F2 discipline preserved. No opaque eaters in any new parser.
 
 Public entry points:
 
-- `check_mizan(module: Module) -> list[Marad]`: pure fail-soft
+- `check_mizan(module: Module) -> list[Marad]`, pure fail-soft
   check.
-- `check_mizan_strict(module: Module) -> Module`: fail-fast
+- `check_mizan_strict(module: Module) -> Module`, fail-fast
   variant.
 
 Three cases enforced (M3 lives in parser, see routing rationale):
@@ -548,7 +782,7 @@ Public constants:
 
 **Phase 2.7.5, tests (35 additions).**
 
-- `tests/test_mizan.py`: 17 tests covering the parametrized
+- `tests/test_mizan.py`, 17 tests covering the parametrized
   fixture sweep (4 valid + 3 checker-eligible invalid; M3 fixture
   excluded, its test lives in test_parser.py per routing),
   per-case named property tests (M1 each-field-missing inline +
@@ -636,16 +870,16 @@ removed produces a single Case-M1 marad in well under a millisecond.
 
 ### Deferred, registered as Session-1.7+ items
 
-- **D16, Runtime evaluation of bound expressions.** Phase 2.7
+- **D16: Runtime evaluation of bound expressions.** Phase 2.7
   parses `false_positive_rate < 0.05` as an AST node; runtime
   evaluation against a corpus is later-phase work.
-- **D17, Non-monotonic interaction warning.** Multi-bound
+- **D17: Non-monotonic interaction warning.** Multi-bound
   interaction analysis between `la_tatghaw` and `la_tukhsiru`
   is Phase 3.
-- **D18, Trivial-bounds linter.** Flagging `< 1.0` ceilings or
+- **D18: Trivial-bounds linter.** Flagging `< 1.0` ceilings or
   `> 0.0` floors as semantically vacuous is a linter concern,
   not a syntactic well-formedness check.
-- **D19, English aliases.** A hypothetical `calibration {
+- **D19: English aliases.** A hypothetical `calibration {
   upper, lower, calibrate }` form is registered as future work
   per thesis Terminology Note.
 - **Phase 2.8, Status-Coverage Checker.** Branch-coverage
@@ -654,7 +888,7 @@ removed produces a single Case-M1 marad in well under a millisecond.
 
 ---
 
-## [0.4.0], 2026-04-25
+## [0.4.0] (2026-04-25)
 
 **Phase 2.6 / Session 1.5.** The scan-incomplete return-type
 checker, Furqan's fourth compile-time primitive, lands. The
@@ -689,7 +923,8 @@ because no Phase-2.5 fixture used these character sequences.
 **Deliberately NOT promoted to keywords:** `Integrity` and
 `Incomplete`. Both remain ordinary identifiers in the type-name
 namespace (NAMING.md §1.6 + LEXER.md §5). The scan-incomplete
-checker recognises them by string-equality at the AST level, mirroring the Phase 2.4 `verify` decision. The pattern across
+checker recognises them by string-equality at the AST level,
+mirroring the Phase 2.4 `verify` decision. The pattern across
 phases: when a name plausibly collides with user identifiers, the
 checker recognises it; when a name is a structural primitive with
 no plausible identifier collision, the tokenizer promotes it.
@@ -701,16 +936,24 @@ no plausible identifier collision, the tokenizer promotes it.
 The grammar surface is defined as "what parses these eight
 fixtures correctly" (Cow Episode anti-pattern check, 2:67-74).
 
-- `tests/fixtures/scan_incomplete/valid/scan_returns_only_integrity.furqan`: sanity case: no union return type.
-- `tests/fixtures/scan_incomplete/valid/scan_handles_both_paths.furqan`: canonical honest shape (`if not is_encrypted(file)` gating
+- `tests/fixtures/scan_incomplete/valid/scan_returns_only_integrity.furqan`
+ , sanity case: no union return type.
+- `tests/fixtures/scan_incomplete/valid/scan_handles_both_paths.furqan`
+ , canonical honest shape (`if not is_encrypted(file)` gating
   the bare-Integrity branch).
-- `tests/fixtures/scan_incomplete/valid/scan_only_incomplete_path.furqan`: conservative case: function always returns Incomplete.
-- `tests/fixtures/scan_incomplete/valid/scan_with_partial_findings.furqan`: Incomplete with non-empty `partial_findings` ident-list.
-- `tests/fixtures/scan_incomplete/invalid/scan_returns_integrity_unguarded.furqan`: Case A: bare Integrity, no enclosing if. **The load-bearing
+- `tests/fixtures/scan_incomplete/valid/scan_only_incomplete_path.furqan`
+ , conservative case: function always returns Incomplete.
+- `tests/fixtures/scan_incomplete/valid/scan_with_partial_findings.furqan`
+ , Incomplete with non-empty `partial_findings` ident-list.
+- `tests/fixtures/scan_incomplete/invalid/scan_returns_integrity_unguarded.furqan`
+ , Case A: bare Integrity, no enclosing if. **The load-bearing
   demo fixture.**
-- `tests/fixtures/scan_incomplete/invalid/scan_returns_integrity_in_failure_branch.furqan`: Case A: guard polarity inverted (`if pred` not `if not pred`).
-- `tests/fixtures/scan_incomplete/invalid/scan_incomplete_missing_reason.furqan`: Case B: Incomplete missing `reason`.
-- `tests/fixtures/scan_incomplete/invalid/scan_incomplete_missing_max_confidence.furqan`: Case B: Incomplete missing `max_confidence`.
+- `tests/fixtures/scan_incomplete/invalid/scan_returns_integrity_in_failure_branch.furqan`
+ , Case A: guard polarity inverted (`if pred` not `if not pred`).
+- `tests/fixtures/scan_incomplete/invalid/scan_incomplete_missing_reason.furqan`
+ , Case B: Incomplete missing `reason`.
+- `tests/fixtures/scan_incomplete/invalid/scan_incomplete_missing_max_confidence.furqan`
+ , Case B: Incomplete missing `max_confidence`.
 
 **Phase 2.6.1, tokenizer additions.**
 
@@ -723,25 +966,25 @@ fixtures correctly" (Cow Episode anti-pattern check, 2:67-74).
 
 **Phase 2.6.2, AST nodes (twelve additions).**
 
-- `StringLiteral(value, span)`: unwrapped string content.
-- `NumberLiteral(lexeme, span)`: dotted-decimal numeric form
+- `StringLiteral(value, span)`, unwrapped string content.
+- `NumberLiteral(lexeme, span)`, dotted-decimal numeric form
   preserved verbatim.
-- `IdentExpr(name, span)`: bare identifier reference in
+- `IdentExpr(name, span)`, bare identifier reference in
   expression position.
-- `IdentList(items, span)`: comma-separated identifier list, used
+- `IdentList(items, span)`, comma-separated identifier list, used
   for `partial_findings:` field.
-- `NotExpr(operand, span)`: unary negation in expressions.
-- `IntegrityLiteral(span)`: bare `Integrity` reference (no
+- `NotExpr(operand, span)`, unary negation in expressions.
+- `IntegrityLiteral(span)`, bare `Integrity` reference (no
   structured form yet; deferred).
-- `IncompleteField(name, value, span)`: single field inside an
+- `IncompleteField(name, value, span)`, single field inside an
   Incomplete literal.
-- `IncompleteLiteral(fields, span)`: `Incomplete { ... }`
+- `IncompleteLiteral(fields, span)`, `Incomplete { ... }`
   constructor literal.
-- `CallStmt(call, span)`: call statement at body scope.
-- `ReturnStmt(value, span)`: `return <expression>` statement.
-- `IfStmt(condition, body, span)`: `if <expression> { ... }`
+- `CallStmt(call, span)`, call statement at body scope.
+- `ReturnStmt(value, span)`, `return <expression>` statement.
+- `IfStmt(condition, body, span)`, `if <expression> { ... }`
   statement (no `else` arm in Phase 2.6).
-- `UnionType(left, right, span)`: binary union return type.
+- `UnionType(left, right, span)`, binary union return type.
 
 `FunctionDef` extended additively with `statements: tuple = ()`.
 `return_type` field's type extends from `TypePath | None` to
@@ -771,9 +1014,9 @@ F1/F2 discipline preserved. No opaque eaters in any new parser.
 
 Public entry points:
 
-- `check_incomplete(module: Module) -> list[Marad]`: pure
+- `check_incomplete(module: Module) -> list[Marad]`, pure
   fail-soft check.
-- `check_incomplete_strict(module: Module) -> Module`: fail-fast
+- `check_incomplete_strict(module: Module) -> Module`, fail-fast
   variant; raises on first marad, returns module unchanged on
   pass.
 
@@ -800,7 +1043,7 @@ Public constants:
 
 **Phase 2.6.5, tests (35 additions).**
 
-- `tests/test_incomplete.py`: 18 tests covering the parametrized
+- `tests/test_incomplete.py`, 18 tests covering the parametrized
   fixture sweep (4 valid + 4 invalid = 8 cases), per-case named
   property tests (Case A unguarded / inverted-guard / negated-
   guard / non-union / no-Integrity-return; Case B reason /
@@ -877,27 +1120,27 @@ fixtures.
 
 ### Deferred, registered as Session-1.6+ items
 
-- **D11, Consumer-side exhaustiveness checking.** A caller that
+- **D11: Consumer-side exhaustiveness checking.** A caller that
   ignores the `Incomplete` arm of a union return type is not
   flagged in Phase 2.6. Implementing this requires control-flow
   analysis on call sites; registered for Session 1.6 or Phase 3.
-- **D12, Numeric range validation on `max_confidence`.** Phase
+- **D12: Numeric range validation on `max_confidence`.** Phase
   2.7 Mizan primitive will check `0.0 <= max_confidence <= 1.0`.
   Phase 2.6 accepts any numeric form.
-- **D13, Full control-flow analysis.** Phase 2.6 syntactic
+- **D13: Full control-flow analysis.** Phase 2.6 syntactic
   detection produces false positives on helper-extracted
   predicates and flag-variable guards. Phase 3 surface.
-- **D14, Escape sequences in string literals.** Phase 2.6
+- **D14: Escape sequences in string literals.** Phase 2.6
   smallest-sufficient lexer rejects newlines and has no `\n`,
   `\"`, `\\` escapes. Future-fixture-driven addition.
-- **D15, `else` arm in `if` statements.** Phase 2.6 has no
+- **D15: `else` arm in `if` statements.** Phase 2.6 has no
   `else`; the `if not <pred> { return Integrity }` pattern is the
   Phase-2.6 canonical form. Future-phase work if a fixture
   requires it.
 
 ---
 
-## [0.3.2], 2026-04-25
+## [0.3.2] (2026-04-25)
 
 Session-1.4.2 polish patch, **documentation-only**.
 
@@ -924,10 +1167,12 @@ the framework eating its own dogfood.
 
 ### Added
 
-- **`docs/CONTRIBUTING.md` §8, "The Polish Patch Protocol"**, ~150 lines of new prose. Six subsections: trigger (§8.1), shape
+- **`docs/CONTRIBUTING.md` §8, "The Polish Patch Protocol"**,
+  ~150 lines of new prose. Six subsections: trigger (§8.1), shape
   of the patch (§8.2), discipline (§8.3), worked examples
   (§8.4, Session 1.1 and Session 1.4.1 with concrete
-  marad/exception types named), what the protocol is NOT (§8.5, explicit boundary cases naming F1/F2 closure, keyword
+  marad/exception types named), what the protocol is NOT (§8.5
+ , explicit boundary cases naming F1/F2 closure, keyword
   promotions, Tier-3 hypothesis failures, public-API renames),
   and the reflexivity check (§8.6).
 
@@ -949,7 +1194,7 @@ the framework eating its own dogfood.
 
 ---
 
-## [0.3.1], 2026-04-25
+## [0.3.1] (2026-04-25)
 
 Session-1.4.1 polish patch. One additive correction from the
 post-Session-1.4 cross-model verification (Perplexity 31-probe
@@ -986,11 +1231,13 @@ any well-formed input.
 
 ### Added
 
-- **`tests/test_additive.py::test_check_module_with_lexically_malformed_sidecar_emits_marad`**, pins the new contract: lex-level garbage produces a structured
+- **`tests/test_additive.py::test_check_module_with_lexically_malformed_sidecar_emits_marad`**
+ , pins the new contract: lex-level garbage produces a structured
   marad with the additive-only primitive tag, the synthetic
   sidecar span, and the offending character quoted in the
   diagnosis.
-- **`tests/test_additive.py::test_check_module_lex_error_does_not_leak_python_exception`**, negative-regression test asserting `check_module` returns
+- **`tests/test_additive.py::test_check_module_lex_error_does_not_leak_python_exception`**
+ , negative-regression test asserting `check_module` returns
   rather than raises on lex-level garbage. Belt-and-braces; if a
   future refactor accidentally narrows the catch back to
   `ParseError` only, this test fires.
@@ -1008,7 +1255,7 @@ any well-formed input.
 
 ### Deferred, registered for a later phase
 
-- **D10, `TokenizeError` structured location fields.** Currently
+- **D10: `TokenizeError` structured location fields.** Currently
   `TokenizeError` inherits `Exception` with a single message
   string; line/column are embedded as text. A Phase-3 surface
   change would add `.span: SourceSpan` to mirror `ParseError`'s
@@ -1019,9 +1266,10 @@ any well-formed input.
 
 ---
 
-## [0.3.0], 2026-04-25
+## [0.3.0] (2026-04-25)
 
-**Phase 2.5 / Session 1.4.** The additive-only module checker, Furqan's third compile-time primitive, lands. The thesis paper §3.3
+**Phase 2.5 / Session 1.4.** The additive-only module checker,
+Furqan's third compile-time primitive, lands. The thesis paper §3.3
 mechanism is implementable; this session demonstrates it. This is the
 language-level transposition of Bayyinah's `MECHANISM_REGISTRY`
 import-time coherence check into a type-system construct.
@@ -1054,16 +1302,24 @@ word test).
 The grammar surface for Phase 2.5 is defined as "what parses these
 eight fixtures correctly" (Cow Episode anti-pattern check, 2:67-74).
 
-- `tests/fixtures/additive_only/valid/module_v1.furqan`: baseline
+- `tests/fixtures/additive_only/valid/module_v1.furqan`, baseline
   v1.0 with three exports, no sidecar.
-- `tests/fixtures/additive_only/valid/module_v2_added_export.furqan`: v2.0 adding one export to v1.0; sidecar present.
-- `tests/fixtures/additive_only/valid/module_v2_optional_major_bump.furqan`: v2.0 adding one export with empty `major_version_bump {}`.
-- `tests/fixtures/additive_only/valid/module_v2_with_major_bump_removes_export.furqan`: v2.0 honestly declaring removal of `severity_weights`.
-- `tests/fixtures/additive_only/invalid/module_v2_removed_export.furqan`: Case 1 violation (removed without bump).
-- `tests/fixtures/additive_only/invalid/module_v2_renamed_export.furqan`: Case 2 enforcement violation (catalog claims rename, exports
+- `tests/fixtures/additive_only/valid/module_v2_added_export.furqan`,
+  v2.0 adding one export to v1.0; sidecar present.
+- `tests/fixtures/additive_only/valid/module_v2_optional_major_bump.furqan`
+ , v2.0 adding one export with empty `major_version_bump {}`.
+- `tests/fixtures/additive_only/valid/module_v2_with_major_bump_removes_export.furqan`
+ , v2.0 honestly declaring removal of `severity_weights`.
+- `tests/fixtures/additive_only/invalid/module_v2_removed_export.furqan`
+ , Case 1 violation (removed without bump).
+- `tests/fixtures/additive_only/invalid/module_v2_renamed_export.furqan`
+ , Case 2 enforcement violation (catalog claims rename, exports
   contradict).
-- `tests/fixtures/additive_only/invalid/module_v2_type_changed_incompatibly.furqan`: Case 3 violation (type changed, no bump).
-- `tests/fixtures/additive_only/invalid/module_v2_catalog_dishonest.furqan`: Case 4 violation (catalog claims removal, symbol still present, the reflexivity test).
+- `tests/fixtures/additive_only/invalid/module_v2_type_changed_incompatibly.furqan`
+ , Case 3 violation (type changed, no bump).
+- `tests/fixtures/additive_only/invalid/module_v2_catalog_dishonest.furqan`
+ , Case 4 violation (catalog claims removal, symbol still present,
+  the reflexivity test).
 
 Each fixture (except `module_v1`, which is the first version)
 ships with its `.furqan_history` sidecar.
@@ -1079,17 +1335,18 @@ ships with its `.furqan_history` sidecar.
 
 **Phase 2.5.2, AST nodes (six additions).**
 
-- `VersionLiteral(components, span)`: semver-shaped version like
+- `VersionLiteral(components, span)`, semver-shaped version like
   `v1.0` or `v2.3.4`. `major` and `minor` properties; `render()`
   returns canonical text form.
-- `ExportDecl(name, type_path, span)`: single `export name: TypePath`
+- `ExportDecl(name, type_path, span)`, single `export name: TypePath`
   line.
-- `RemovesEntry(name, span)`: single removed-symbol entry inside
+- `RemovesEntry(name, span)`, single removed-symbol entry inside
   major_version_bump.
-- `RenamesEntry(old_name, new_name, span)`: single rename entry.
-- `MajorVersionBump(removes, renames, span)`: the escape-valve
+- `RenamesEntry(old_name, new_name, span)`, single rename entry.
+- `MajorVersionBump(removes, renames, span)`, the escape-valve
   catalog. Empty catalog (`{}`) is benign.
-- `AdditiveOnlyModuleDecl(name, version, exports, bump_catalog, span)`: the top-level declaration.
+- `AdditiveOnlyModuleDecl(name, version, exports, bump_catalog, span)`
+ , the top-level declaration.
 
 `Module` extended additively with `additive_only_modules:
 tuple[AdditiveOnlyModuleDecl, ...] = ()`.
@@ -1116,13 +1373,15 @@ and lands now to support the Case 2 detection-vs-enforcement split.
 
 Public entry points (pinned by NAMING.md §6):
 
-- `check_additive(current: Module, previous: Module) -> Result`: pure two-module comparison, no I/O. The load-bearing primitive.
-- `check_module(module: Module, sidecar_text: str | None) -> Result`: sidecar-aware wrapper. Resolves adjacent prior version,
+- `check_additive(current: Module, previous: Module) -> Result`,
+  pure two-module comparison, no I/O. The load-bearing primitive.
+- `check_module(module: Module, sidecar_text: str | None) -> Result`
+ , sidecar-aware wrapper. Resolves adjacent prior version,
   delegates to `check_additive`. Absent sidecar = trivial pass;
   malformed sidecar = marad; non-adjacent prior = marad.
 - `check_module_strict(module: Module, sidecar_text: str | None) ->
-  Module`: fail-fast variant.
-- `Result(marads, advisories, passed)`: bundle separating errors
+  Module`, fail-fast variant.
+- `Result(marads, advisories, passed)`, bundle separating errors
   from informational diagnostics.
 
 Four enforcement cases per thesis §3.3:
@@ -1137,7 +1396,7 @@ Four enforcement cases per thesis §3.3:
 
 **Phase 2.5.6, tests (50 additions).**
 
-- `tests/test_additive.py`: 38 tests covering parametrized fixture
+- `tests/test_additive.py`, 38 tests covering parametrized fixture
   sweeps (4 valid + 4 invalid = 8 cases), Result type properties,
   per-case named property tests (Case 1, Case 2 enforcement, Case 2
   advisory positive + negative, Case 3, Case 4),
@@ -1151,13 +1410,13 @@ Four enforcement cases per thesis §3.3:
 
 **Phase 2.5.7, documentation.**
 
-- `docs/internals/LEXER.md`: new file. Documents the NUMBER token
+- `docs/internals/LEXER.md`, new file. Documents the NUMBER token
   shape decision, version-literal lexing, keyword-promotion
   discipline, and the deliberate absence of string literals in
   Phase 2.5.
 - `docs/NAMING.md` §1.6 updated with the six new keywords and a
   per-keyword promotion-rationale block.
-- `docs/internals/CHECKER.md`: new file documenting the four
+- `docs/internals/CHECKER.md`, new file documenting the four
   cases, the public surface, the sidecar format, and the Case-2
   detection-vs-enforcement split.
 
@@ -1184,7 +1443,8 @@ Four enforcement cases per thesis §3.3:
 
 ### Demo readiness
 
-The June 9 Perplexity Billion Dollar Build live demo path, *Bayyinah `MECHANISM_REGISTRY` → .furqan transcription → remove
+The June 9 Perplexity Billion Dollar Build live demo path,
+*Bayyinah `MECHANISM_REGISTRY` → .furqan transcription → remove
 export → run checker → show marad*, is **executable end-to-end**
 with this session's artifact. Concretely:
 
@@ -1209,29 +1469,29 @@ existing fixtures.
 
 ### Deferred, registered as Phase-2.6+ items
 
-- **D6, Sidecar file discovery.** The pure
+- **D6: Sidecar file discovery.** The pure
   `check_additive(current, previous)` and the in-memory-text
   `check_module(module, sidecar_text)` ship in this session.
   Filesystem discovery (read `<module>.furqan_history` from disk
   next to the `.furqan` file) is a CLI-layer concern deferred to
   the Phase-3 CLI. The pure-checker / I/O separation mirrors the
   Bayyinah `ScanService` / CLI separation.
-- **D7, `type_changes:` catalog entry.** Phase 2.5 has no syntax
+- **D7: `type_changes:` catalog entry.** Phase 2.5 has no syntax
   for declaring an intentional type change; type changes must be
   expressed as a `removes:` + add of the new-typed symbol, OR as a
   `renames:` pair (with the rename target carrying the new type).
   A `type_changes:` entry would streamline this. Deferred.
-- **D8, Structural subtyping on TypePath.** Phase 2.5 uses
+- **D8: Structural subtyping on TypePath.** Phase 2.5 uses
   structural equality. A future phase may introduce subtype
   compatibility (e.g., a derived type substituting for a base
   type). Phase 3 surface.
-- **D9, Multi-module dependency graphs / transitive multi-version
+- **D9: Multi-module dependency graphs / transitive multi-version
   comparison.** Phase 2.5 does pair comparison only. Cross-module
   reasoning is a Phase 3+ surface.
 
 ---
 
-## [0.2.0], 2026-04-25
+## [0.2.0] (2026-04-25)
 
 **Phase 2.4 / Session 1.3.** The zahir/batin type checker, Furqan's
 second compile-time primitive, lands. The thesis paper §3.2
@@ -1247,16 +1507,22 @@ renamed or removed.
 
 **Phase 2.4.0, paired fixtures (the surface contract).**
 
-- `tests/fixtures/zahir_batin/valid/document_compound.furqan`: literal port of thesis §3.2 Document example.
-- `tests/fixtures/zahir_batin/valid/verify_reads_both.furqan`: `verify(doc: Document)` accessing both layers via
+- `tests/fixtures/zahir_batin/valid/document_compound.furqan`,
+  literal port of thesis §3.2 Document example.
+- `tests/fixtures/zahir_batin/valid/verify_reads_both.furqan`,
+  `verify(doc: Document)` accessing both layers via
   `compare(doc.zahir, doc.batin)`. The canonical cross-layer
   construct.
-- `tests/fixtures/zahir_batin/valid/verify_reads_one.furqan`: `verify(doc: Document)` accessing only one layer; verify is
+- `tests/fixtures/zahir_batin/valid/verify_reads_one.furqan`,
+  `verify(doc: Document)` accessing only one layer; verify is
   *permitted* both layers, not *required* both.
-- `tests/fixtures/zahir_batin/invalid/zahir_reads_batin.furqan`: Case 1 violation (zahir-typed function reads batin field).
-- `tests/fixtures/zahir_batin/invalid/batin_reads_zahir.furqan`: Case 2 violation (batin-typed function reads zahir field; the
+- `tests/fixtures/zahir_batin/invalid/zahir_reads_batin.furqan`,
+  Case 1 violation (zahir-typed function reads batin field).
+- `tests/fixtures/zahir_batin/invalid/batin_reads_zahir.furqan`,
+  Case 2 violation (batin-typed function reads zahir field; the
   symmetric dual of Case 1).
-- `tests/fixtures/zahir_batin/invalid/non_verify_unqualified_param.furqan`: Case 3 violation (non-verify function declares unqualified
+- `tests/fixtures/zahir_batin/invalid/non_verify_unqualified_param.furqan`
+ , Case 3 violation (non-verify function declares unqualified
   compound-type parameter).
 
 The grammar surface for Phase 2.4 is defined as "what parses these
@@ -1283,20 +1549,21 @@ token layer. Documented in `docs/NAMING.md` §1.5.
 
 **Phase 2.4.2, AST nodes (six additions).**
 
-- `TypePath(base, layer, span, layer_alias_used)`: parameter and
+- `TypePath(base, layer, span, layer_alias_used)`, parameter and
   return-type expression. Phase 2.4 forms: bare IDENT or
   `IDENT.zahir` / `IDENT.batin`.
-- `FieldDecl(name, type_name, span)`: single field inside a layer
+- `FieldDecl(name, type_name, span)`, single field inside a layer
   block. Field types restricted to bare IDENT in Phase 2.4
   (generics deferred).
-- `LayerBlock(layer, fields, span, alias_used)`: `zahir { ... }`
+- `LayerBlock(layer, fields, span, alias_used)`, `zahir { ... }`
   or `batin { ... }` block inside a compound-type declaration.
-- `CompoundTypeDef(name, zahir, batin, span)`: top-level
+- `CompoundTypeDef(name, zahir, batin, span)`, top-level
   `type Name { zahir { ... } batin { ... } }` block. Both layers
   required; order is fixed (zahir first, batin second).
-- `ParamDecl(name, type_path, span)`: function parameter
+- `ParamDecl(name, type_path, span)`, function parameter
   declaration. Untyped parameters are not accepted.
-- `LayerAccess(param_name, layer, span, layer_alias_used)`: `param.zahir` / `param.batin` access pre-scanned from a function
+- `LayerAccess(param_name, layer, span, layer_alias_used)`,
+  `param.zahir` / `param.batin` access pre-scanned from a function
   body's call-argument tokens. The input to the zahir/batin
   checker.
 
@@ -1346,7 +1613,7 @@ first violation). Module-level constant `VERIFY_FUNCTION_NAME =
 
 **Phase 2.4.5, tests (22 additions).**
 
-- `tests/test_zahir_batin.py`: 22 tests:
+- `tests/test_zahir_batin.py`, 22 tests:
   - 2 parametrized sweeps (3 valid + 3 invalid fixtures = 6 cases)
   - 1 directory-non-empty guard
   - 2 named tests for Case 1 (function/parameter/case naming +
@@ -1387,21 +1654,21 @@ first violation). Module-level constant `VERIFY_FUNCTION_NAME =
 
 ### Deferred, registered as Phase-2.5+ items
 
-- **D3, Field-level access checking.** Phase 2.4 verifies the
+- **D3: Field-level access checking.** Phase 2.4 verifies the
   layer of access (`doc.zahir` vs `doc.batin`) but does not verify
   that the trailing field name (e.g., `doc.zahir.x`) is actually
   declared in the layer. Field-level resolution requires a
   symbol-table infrastructure that Phase 2 does not yet have.
   Belongs to Phase 2.5+ where the additive-only module checker
   will introduce module-level symbol tracking.
-- **D4, Behavioral verification of `verify`.** The thesis paper
+- **D4: Behavioral verification of `verify`.** The thesis paper
   §7 reflexivity analysis names this Failure Mode 1 (dishonest
   declarations). Verifying that a function named `verify`
   *actually* performs cross-layer comparison is structural-honesty
   beyond what the type system can guarantee; the safeguard is
   human review, recorded here as a known limit rather than a
   future fix.
-- **D5, Nested calls inside argument lists.** Currently
+- **D5: Nested calls inside argument lists.** Currently
   `outer(inner())` extracts only `outer` as a CallRef; `inner` is
   inside the opaque arg-list region (modulo the layer-access
   pre-scan). The bismillah scope checker does not see `inner`. This
@@ -1411,7 +1678,7 @@ first violation). Module-level constant `VERIFY_FUNCTION_NAME =
 
 ---
 
-## [0.1.2], 2026-04-25
+## [0.1.2] (2026-04-25)
 
 Session-1.2 hardening patch. One load-bearing parser correction from
 the Perplexity parser/tokenizer deep review. Additive on the
@@ -1426,13 +1693,14 @@ masking AST loss.
   `tests/fixtures/invalid/`, which expects parse-then-checker
   rejection). Three fixtures pin the c.3 drill-down cases from the
   Perplexity review:
-  - `call_arg_stray_lbrace.furqan`: `x({)` → "Stray '{' inside call argument list"
-  - `call_arg_stray_rbrace.furqan`: `x(})` → "Stray '}' inside call argument list"
-  - `call_arg_braced_inner_call.furqan`: `x({ parse_files() })` → rejected
+  - `call_arg_stray_lbrace.furqan`, `x({)` → "Stray '{' inside call argument list"
+  - `call_arg_stray_rbrace.furqan`, `x(})` → "Stray '}' inside call argument list"
+  - `call_arg_braced_inner_call.furqan`, `x({ parse_files() })` → rejected
     (the load-bearing case: pre-patch this parsed as `x()` with the
     `parse_files()` call silently dropped, hiding a `not_scope`
     violation from the Bismillah scope checker)
-- **`tests/fixtures/valid/call_arg_paren_only.furqan`**, negative-regression baseline. Confirms paren-only nesting at depth
+- **`tests/fixtures/valid/call_arg_paren_only.furqan`**,
+  negative-regression baseline. Confirms paren-only nesting at depth
   3 inside an arg list still parses as one CallRef on the outer
   head.
 - **5 new tests in `tests/test_parser.py`**:
@@ -1515,7 +1783,7 @@ so downstream Furqan source authors are not surprised at flip-day.
 
 ---
 
-## [0.1.1], 2026-04-25
+## [0.1.1] (2026-04-25)
 
 Session-1.1 polish patch. Four additive corrections from the
 post-Session-1 review (Perplexity, three-model collaboration
@@ -1586,26 +1854,28 @@ conversation before Phase 2.4 (zahir/batin) lands rather than
 unilateral implementation. Both are recorded here so the next
 session opens with them visible.
 
-- **D1, `Marad` tier field, or separate `Advisory` type?** The
+- **D1: `Marad` tier field, or separate `Advisory` type?** The
   Bismillah checker currently treats a module declaring an empty
   `not_scope:` as a silent pass. Per thesis §7 Failure Mode 1
-  (dishonest Bismillah declarations), this is a Process-2 risk (technically compliant, structurally vacuous). The fix is an
+  (dishonest Bismillah declarations), this is a Process-2 risk,
+  technically compliant, structurally vacuous. The fix is an
   informational diagnostic. The design question is whether this
   belongs as a `tier: "advisory" | "error"` field on the existing
   `Marad`, or as a separate `Advisory` type alongside `Marad`. Lean:
   separate type, no dataclass mutation. Awaits Fraz/Bilal sign-off
   before Phase 2.4.
-- **D2, Phase-3 `regression_check` should be a templatable shell
+- **D2: Phase-3 `regression_check` should be a templatable shell
   command, not prose.** When the checker is exposed externally
   (`furqan check path/to/file.furqan`), the marad's
   `regression_check` field should be the actual command the user
-  types. Open question: how is the template configured, environment variable, project config file, CLI flag? Phase-3
+  types. Open question: how is the template configured,
+  environment variable, project config file, CLI flag? Phase-3
   surface; flagged here so Phase-3 design begins from a known
   requirement rather than discovering it mid-implementation.
 
 ---
 
-## [0.1.0], 2026-04-25
+## [0.1.0] (2026-04-25)
 
 **Phase 2, Session 1.** First running prototype. The Furqan thesis
 paper said "no compiler exists." This session demonstrates that the
@@ -1617,26 +1887,26 @@ cleanest of the seven primitives is mechanically implementable.
 
 - `pyproject.toml` (src-layout, zero runtime dependencies,
   pytest in `[project.optional-dependencies].dev`).
-- `docs/NAMING.md`: the second authority in the project's
+- `docs/NAMING.md`, the second authority in the project's
   authority hierarchy (after the thesis paper). Pins the
   Arabic/English alias rule, the Marad field structure, and the
   additive-only invariant on the type-checker's own surface.
-- `docs/CONTRIBUTING.md`: governance protocol
+- `docs/CONTRIBUTING.md`, governance protocol
   (COMPLIANT/PARTIAL/BLOCKED labels, the five-step workflow,
   the 20% skip rule, the dependency policy).
-- `README.md`: public-facing surface description and
+- `README.md`, public-facing surface description and
   per-primitive roadmap.
 
 **Phase 2.1, tokenizer**
 
-- `src/furqan/parser/tokenizer.py`: hand-written single-pass
+- `src/furqan/parser/tokenizer.py`, hand-written single-pass
   tokenizer. Recognises 7 keywords (the canonical `bismillah` plus
   English alias `scope_block`, the four Bismillah-block fields, and
   `fn`), identifiers, the punctuation `{ } ( ) : , .`, the
   multi-character `->`, and `//` line comments. 1-indexed line and
   column tracking. `TokenizeError` on unknown characters with a
   marad-style message listing what is accepted.
-- `tests/test_tokenizer.py`: 19 tests pinning EOF behaviour,
+- `tests/test_tokenizer.py`, 19 tests pinning EOF behaviour,
   identifier rules, every keyword's lex kind, the
   bismillah/scope_block alias distinction at the lex level, line
   and column tracking, comment elision, and unknown-character
@@ -1644,39 +1914,39 @@ cleanest of the seven primitives is mechanically implementable.
 
 **Phase 2.2, AST + parser**
 
-- `src/furqan/parser/ast_nodes.py`: `SourceSpan`, `CallRef`,
+- `src/furqan/parser/ast_nodes.py`, `SourceSpan`, `CallRef`,
   `BismillahBlock`, `FunctionDef`, `Module`. All frozen dataclasses;
   the AST is immutable.
-- `src/furqan/parser/parser.py`: recursive-descent parser. Enforces
+- `src/furqan/parser/parser.py`, recursive-descent parser. Enforces
   exactly-one-Bismillah-per-module, all four required Bismillah
   fields, accepts both Arabic and English aliases identically (with
   `alias_used` recorded), parses qualified-name lists, parses
   function bodies as call-reference sets. The first parse error
   raises `ParseError` with a precise SourceSpan. No expression
   grammar yet, deliberate Phase-2 gap.
-- `tests/test_parser.py`: 22 tests pinning each grammar rule, all
+- `tests/test_parser.py`, 22 tests pinning each grammar rule, all
   four required-field error cases (parametrized), uniqueness of the
   Bismillah block, alias equivalence, multi-function modules,
   trailing-token rejection, and span correctness.
 
 **Phase 2.3, Bismillah scope checker + paired fixtures**
 
-- `src/furqan/errors/marad.py`: diagnosis-structured error type per
+- `src/furqan/errors/marad.py`, diagnosis-structured error type per
   thesis §3.7. `Marad` is a frozen dataclass with the four required
   fields (`diagnosis`, `location`, `minimal_fix`, `regression_check`)
   plus a `primitive` tag. `MaradError` wraps it for raise-and-catch.
   `Marad.render()` produces the human-readable form.
-- `src/furqan/checker/bismillah.py`: the scope checker. Two entry
+- `src/furqan/checker/bismillah.py`, the scope checker. Two entry
   points: `check_module` (returns list of marads, fail-soft) and
   `check_module_strict` (raises on first marad, fail-fast). Walks
   every function's call references; flags any call whose head
   identifier appears in the module's `not_scope`.
-- `tests/fixtures/valid/`: 3 `.furqan` fixtures the checker accepts
+- `tests/fixtures/valid/`, 3 `.furqan` fixtures the checker accepts
   (full module, degenerate empty module, scope_block alias variant).
-- `tests/fixtures/invalid/`: 3 `.furqan` fixtures the checker
+- `tests/fixtures/invalid/`, 3 `.furqan` fixtures the checker
   rejects (direct violation, qualified-call violation, violation in
   the second function only).
-- `tests/test_bismillah.py`: 13 tests. 2 parametrized fixture
+- `tests/test_bismillah.py`, 13 tests. 2 parametrized fixture
   sweeps (every valid fixture produces zero diagnostics; every
   invalid fixture produces ≥1). 11 named-property tests pinning
   diagnostic content, alias preservation, location accuracy, strict-

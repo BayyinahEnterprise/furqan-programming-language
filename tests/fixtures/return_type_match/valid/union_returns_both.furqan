@@ -1,0 +1,25 @@
+// D22 fixture #2 (valid) - both arms of the canonical union
+// match.
+//
+// The function declares -> Integrity | Incomplete and returns
+// IntegrityLiteral on one branch, IncompleteLiteral on the other.
+// Both inferred types are members of the accepted set
+// {"Integrity", "Incomplete"}; M1 does not fire.
+
+bismillah UnionBranch {
+    authority: NAMING_MD
+    serves: purpose_hierarchy.balance_for_living_systems
+    scope: scan
+    not_scope: nothing_excluded
+}
+
+fn scan() -> Integrity | Incomplete {
+    if not present {
+        return Incomplete {
+            reason: "missing",
+            max_confidence: 0.5,
+            partial_findings: empty_list
+        }
+    }
+    return Integrity
+}
