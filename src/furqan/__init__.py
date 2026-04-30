@@ -21,12 +21,12 @@ patch (P4 from Perplexity's pre-publish audit).
 
 from __future__ import annotations
 
-# Pinned literal — mirrors the ``version = "..."`` line in
+# Pinned literal, mirrors the ``version = "..."`` line in
 # ``pyproject.toml``. Kept here for the case where the package is
 # imported from a source tree without an installed distribution.
 # Version-bump procedure: change pyproject.toml AND this literal in
 # the same commit; the post-bump audit confirms the two agree.
-__version__: str = "0.9.0"
+__version__: str = "0.10.0"
 
 try:
     # When the package is installed (the normal case for end users),
@@ -54,4 +54,7 @@ except ImportError:  # pragma: no cover - importlib.metadata is stdlib >= 3.8
 del annotations
 
 
-__all__ = ["__version__"]
+from furqan.project import Project
+
+
+__all__ = ["__version__", "Project"]

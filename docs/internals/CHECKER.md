@@ -411,3 +411,47 @@ After D24, the return-type discipline has four legs:
 The compiler enforces return-type honesty from every angle: you
 must return, on every path, with the right type, and your callers
 must not hide it.
+
+
+---
+
+## Graph-level checker (D9/D20, v0.10.0)
+
+The `furqan.project.Project` class shipped in v0.10.0 introduces
+the first cross-module checker. Per-module checkers operate on a
+single parsed `Module`; the graph-level checker operates on a
+`Project` (a collection of modules keyed by bismillah name) and
+emits diagnostics about the dependency structure between modules.
+
+### Three cases
+
+* **G1, missing dependency target (Marad).** A tanzil block
+  declares `depends_on: X` but no module named `X` exists in the
+  project. The cross-module extension of tanzil T1/T2 (which
+  catch self-dependency and within-module duplicates).
+* **G2, cross-module cycle (Marad).** The dependency graph
+  contains a cycle. The cycle path is reported with an arrow
+  chain (`A -> B -> C -> A`), canonicalized so the
+  lexicographically-smallest member is the head. The
+  multi-module generalization of tanzil T1.
+* **G3, orphan module (Advisory).** A module in a multi-module
+  project has no tanzil declarations and no other module
+  depends on it. Disconnected from the dependency graph.
+  Informational, not a structural violation: the module may
+  legitimately be the project entry point or a standalone
+  utility.
+
+### What this checker does NOT do (deferred)
+
+* **D23, cross-module type resolution.** Ring-close R1 still
+  fires for any type not defined in the current module, even
+  when the type is defined in a declared dependency. D23 will
+  use the graph from this release as its foundation.
+* **Cross-module status-coverage propagation.** D11 still
+  operates on a single module. Phase 3 will extend it across
+  module boundaries using the topological sort.
+* **External-dependency declarations.** G1 currently fires on
+  every dependency target not present in the project. There is
+  no syntax yet for marking a dependency as external (vendored
+  or from a registry); when that surface lands, G1 will gain
+  an exception path.

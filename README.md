@@ -58,9 +58,9 @@ additions.
 
 ## Verified state
 
-* 453 tests passing in ~0.7 seconds on Python 3.10+
+* 495 tests passing in ~3 seconds on Python 3.10+
 * Zero runtime dependencies, Python standard library only
-* Public surface 42 / 38 / 4 (parser / checker / errors), additive-only invariant held since v0.1.0
+* Public surface 42 / 38 / 4 (parser / checker / errors), plus `furqan.Project` for multi-module analysis (D9/D20). Additive-only invariant held since v0.1.0
 * Eight sessions, eight closing audits, zero open findings under the Munafiq Protocol cross-verification across three AI collaborators (Anthropic Claude, xAI Grok, Perplexity Computer)
 
 ## Quickstart
@@ -69,7 +69,7 @@ additions.
 git clone https://github.com/BayyinahEnterprise/furqan.git
 cd furqan
 pip install -e .
-python -m pytest        # 453 passing in ~0.7s
+python -m pytest        # 495 passing in ~3s
 ```
 
 The library:
@@ -239,7 +239,7 @@ If you use Furqan in academic work:
   author    = {Arfeen, Bilal Syed and Ashraf, Fraz},
   title     = {Furqan: A Programming-Language Type-Checker for Structural Honesty},
   year      = {2026},
-  version   = {0.9.0},
+  version   = {0.10.0},
   publisher = {Zenodo},
   doi       = {10.5281/zenodo.19750529},
   url       = {https://github.com/BayyinahEnterprise/furqan}

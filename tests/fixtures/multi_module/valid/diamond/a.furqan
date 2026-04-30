@@ -1,0 +1,13 @@
+// D9/D20 diamond fixture, top A. Depends on B and C.
+
+bismillah A {
+    authority: NAMING_MD
+    serves: purpose_hierarchy.balance_for_living_systems
+    scope: top
+    not_scope: nothing_excluded
+}
+
+tanzil a_deps {
+    depends_on: B
+    depends_on: C
+}
