@@ -1,0 +1,39 @@
+// D11 fixture #7 (invalid) - per-call-site firing.
+//
+// `producer` is the only producer. Two separate functions
+// (`caller_one`, `caller_two`) each call it and each declare a
+// non-union return type. Case S1 must fire twice (once per
+// caller); the per-call-site discipline matches Tanzil T1's
+// per-occurrence firing rather than first-occurrence-wins
+// semantics.
+//
+// Expected: exactly two S1 marads. Each names a distinct caller
+// in its diagnosis.
+
+bismillah MultipleCollapses {
+    authority: NAMING_MD
+    serves: purpose_hierarchy.balance_for_living_systems
+    scope: scan
+    not_scope: nothing_excluded
+}
+
+fn producer() -> Integrity | Incomplete {
+    if not ready {
+        return Incomplete {
+            reason: "not ready",
+            max_confidence: 0.5,
+            partial_findings: empty_list
+        }
+    }
+    return Integrity
+}
+
+fn caller_one() -> Integrity {
+    producer()
+    return Integrity
+}
+
+fn caller_two() -> Integrity {
+    producer()
+    return Integrity
+}

@@ -188,4 +188,67 @@ removals or renames that happened in v1.1 or v1.2.
 
 ---
 
-*Bismillah.*
+## 9. Status-coverage checker (D11, v0.8.0), the consumer-side dual
+
+The Phase 2.6 scan-incomplete checker is the producer-side primitive
+of structural-honesty for incompleteness: a function declaring
+`-> Integrity | Incomplete` must handle both arms in its body. The
+v0.8.0 status-coverage checker is the consumer-side dual: a function
+that CALLS a producer must propagate the union honestly in its own
+return type. Together the two checkers close the loop on the
+discipline. Incompleteness cannot be silently introduced (Phase 2.6
+Case A guards bare-Integrity returns; Case B requires the literal's
+required fields) AND it cannot be silently collapsed across a call
+boundary (D11 Cases S1, S2).
+
+### The three cases
+
+* **S1, status collapse (Marad).** Caller's declared return type is
+  not exactly `Integrity | Incomplete` despite calling a function
+  whose return type IS that union. The caller has narrowed away the
+  possibility of incompleteness; the caller's signature now lies
+  about what the caller actually does. One Marad per offending call
+  site (per-occurrence discipline matches Tanzil T1 self-dependency
+  firing).
+* **S2, status discard (Advisory).** Caller has no declared return
+  type despite calling a producer. The producer's result is
+  silently dropped. Advisory rather than Marad: the function may be
+  intentionally effectful (a logger, a side-effect-only
+  orchestrator). The diagnostic alerts the developer; the strict-
+  variant gate does not fire on it.
+* **S3, honest propagation (no diagnostic).** Caller is itself a
+  producer. Union preserved end-to-end. Trivial pass.
+
+### Local-scope only
+
+The producer map is built from `module.functions` exclusively. A
+call to a function defined in another module cannot be resolved
+here, the same local-scope limitation as ring-close R1 and Phase
+2.6 Case A's producer detection. Cross-module producer resolution
+is registered as D23 alongside the cross-module ring analysis.
+
+### Why this is not a new primitive
+
+D11 sits inside the scan-incomplete primitive's discipline rather
+than constituting an eighth primitive. The seven core primitives
+(bismillah, zahir/batin, additive-only, scan-incomplete, mizan,
+tanzil, ring-close) each express a distinct structural invariant.
+Status-coverage is a checker EXTENSION of scan-incomplete: same
+invariant (incompleteness must be honestly surfaced), enforced
+across one more boundary (call sites in addition to function
+bodies). Treating it as a new primitive would inflate the seven-
+primitive count without adding a new structural rule.
+
+### What this checker does NOT do
+
+* **Branch-level exhaustiveness (D26).** Whether the caller
+  inspects both arms of the union via if/else branching is not
+  checked. Branch-level match checking requires control-flow
+  analysis (D13) and pattern matching (future grammar).
+* **Transitive collapse (D25).** A to B to C where C is a producer:
+  D11 checks B's call to C and A's call to B independently. It
+  does not verify the full chain preserves the union. Phase 3+
+  work.
+* **Effect tracking.** A future Phase-3 effect-system primitive
+  may upgrade S2 from Advisory to Marad when the caller is purely
+  functional (no side effects). For now, S2 stays informational.

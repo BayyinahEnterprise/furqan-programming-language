@@ -12,6 +12,77 @@ itself (NAMING.md §6).
 
 ---
 
+## [0.8.0], 2026-04-30
+
+**Phase 3 / Session 1.10: D11 status-coverage checker.** The
+consumer-side dual of the Phase 2.6 scan-incomplete primitive.
+Where scan-incomplete polices the producer side (a function
+declaring `-> Integrity | Incomplete` must handle both arms),
+status-coverage polices the consumer side: a function that CALLS
+a producer must propagate the union honestly in its own return
+type. Together the two checkers close the loop on the structural-
+honesty discipline for incompleteness: the possibility cannot be
+silently introduced (Phase 2.6) AND cannot be silently collapsed
+across a call boundary (D11).
+
+A minor-version bump (0.7.x to 0.8.0) reflects new public exports
+and a new checker module. No new keywords, no new AST nodes, no
+parser changes; D11 is a pure whole-module checker over the
+existing AST. The seven core primitives stay closed; D11 is a
+checker extension within the scan-incomplete family rather than
+an eighth primitive.
+
+### Added
+
+* **D11, status-coverage checker** (`checker/status_coverage.py`).
+  - **Case S1 (status collapse, Marad).** Caller returns a non-
+    union type (or a union whose arms are not exactly Integrity
+    and Incomplete) despite calling a producer. The possibility
+    of incompleteness is silently narrowed away. One Marad per
+    offending call site (per-occurrence discipline matches Tanzil
+    T1).
+  - **Case S2 (status discard, Advisory).** Caller has no
+    declared return type despite calling a producer. The result
+    is silently discarded; may be intentionally effectful.
+    Advisory rather than Marad: the strict-variant gate does
+    not fire.
+  - **S3 (honest propagation).** Caller is itself a producer;
+    union preserved end-to-end. Zero diagnostics.
+  - Local-scope resolution only (same limitation as ring-close R1
+    and Phase 2.6 producer detection). Cross-module producer
+    resolution registered as D23.
+* Public surface additions on `furqan.checker`:
+  - `check_status_coverage(module) -> list[Marad | Advisory]`
+  - `check_status_coverage_strict(module) -> Module`
+  - `STATUS_COVERAGE_PRIMITIVE_NAME = "status_coverage"`
+
+### Tests
+
+* 334 to 366 (+32). All Phase 2.x and Phase 3.0 tests pass
+  identically; D11 is additive on the test surface.
+
+### Deferred items registered
+
+* **D25, transitive status-collapse detection.** A to B to C
+  where C is a producer; D11 checks each call site
+  independently and does not verify the full chain preserves the
+  union. Phase 3+ work.
+* **D26, branch-level exhaustiveness.** Whether the caller
+  inspects both arms of the union via if/else (rather than just
+  return-type propagation) requires control-flow analysis (D13)
+  and pattern matching (future grammar).
+
+### Unchanged
+
+* Seven core primitives unchanged. Parser and tokenizer untouched.
+* 28 keywords (unchanged from v0.7.1).
+* `IfStmt.else_body` semantics unchanged (D11 does not interact
+  with control-flow structure).
+* CI workflow unchanged (still 3.10-3.13 matrix; the new tests
+  are picked up automatically).
+
+---
+
 ## [0.7.1], 2026-04-30
 
 **Phase 3.0 / Session 1.9.** Pre-push polish before the first
@@ -1642,7 +1713,3 @@ deeper marad caller-side regression-check verification (§3.7) are
 Phase-3 concerns: each requires either a build system or whole-
 program analysis that the per-module Phase-2 surface does not yet
 have.
-
----
-
-*Bismillah.*

@@ -47,6 +47,7 @@ zero runtime dependencies and no model in the loop.
 | 5 | Mizan calibration     | `checker/mizan.py`           | **Shipped**, Session 1.6 (v0.5.0)            |
 | 6 | Tanzil build ordering | `checker/tanzil.py`          | **Shipped**, Session 1.7 (v0.6.0)            |
 | 7 | Ring-close            | `checker/ring_close.py`      | **Shipped**, Session 1.8 (v0.7.0)            |
+| + | Status-coverage (D11, checker extension of #4) | `checker/status_coverage.py` | **Shipped**, Session 1.10 (v0.8.0)           |
 
 **Seven of seven primitives shipped; the ring is closed.** Each row
 corresponds to a single closing `HANDOFF.md` block; each version
@@ -57,10 +58,10 @@ English-alias policy.)
 
 ## Verified state
 
-* 334 tests passing in ~0.4 seconds on Python 3.10+
+* 366 tests passing in ~0.5 seconds on Python 3.10+
 * Zero runtime dependencies; Python standard library only
-* Public surface 42 / 29 / 4 (parser / checker / errors), additive-only invariant held since v0.1.0
-* Eight sessions, eight closing audits, zero open findings under the Munafiq Protocol cross-verification across three AI collaborators (Anthropic Claude, xAI Grok, Perplexity Computer)
+* Public surface 42 / 32 / 4 (parser / checker / errors), additive-only invariant held since v0.1.0
+* Nine closing audits, zero open findings under cross-verification across three AI collaborators (Anthropic Claude, xAI Grok, Perplexity Computer)
 
 ## Quickstart
 
@@ -202,7 +203,7 @@ If you use Furqan in academic work:
   author    = {Arfeen, Bilal Syed and Ashraf, Fraz},
   title     = {Furqan: A Programming-Language Type-Checker for Structural Honesty},
   year      = {2026},
-  version   = {0.7.1},
+  version   = {0.8.0},
   publisher = {Zenodo},
   doi       = {10.5281/zenodo.19750529},
   url       = {https://github.com/BayyinahEnterprise/Furqan---Honest-Programming-Langage}

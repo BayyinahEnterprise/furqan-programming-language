@@ -246,7 +246,3 @@ the column of the surrounding string literal. The two raise sites
 on the unterminated-string path report the START location of the
 literal (where the unterminated quote opened), since that is the
 position the developer needs to find the typo.
-
----
-
-*Bismillah.*

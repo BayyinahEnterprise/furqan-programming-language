@@ -1,0 +1,37 @@
+// D11 fixture #1 (valid) - honest propagation through a call chain.
+//
+// `scan_file` is a producer: it returns Integrity | Incomplete and
+// the body handles both arms (Phase 2.6 producer-side honesty).
+// `scan_all` calls `scan_file` and itself returns Integrity |
+// Incomplete; the union is propagated end-to-end. Case S3: zero
+// diagnostics from the consumer-side checker.
+
+bismillah HonestChain {
+    authority: NAMING_MD
+    serves: purpose_hierarchy.balance_for_living_systems
+    scope: scan
+    not_scope: nothing_excluded
+}
+
+fn scan_file() -> Integrity | Incomplete {
+    if not readable {
+        return Incomplete {
+            reason: "unreadable",
+            max_confidence: 0.5,
+            partial_findings: empty_list
+        }
+    }
+    return Integrity
+}
+
+fn scan_all() -> Integrity | Incomplete {
+    scan_file()
+    if not paths_present {
+        return Incomplete {
+            reason: "no paths supplied",
+            max_confidence: 0.5,
+            partial_findings: empty_list
+        }
+    }
+    return Integrity
+}

@@ -1,0 +1,35 @@
+// D11 fixture #5 (invalid) - canonical S1 status collapse.
+//
+// `deep_scan` is a producer (returns Integrity | Incomplete and
+// the body handles both arms). `summarize` calls `deep_scan` but
+// declares `-> Integrity`. The possibility of incompleteness is
+// silently narrowed away at `summarize`'s signature. Case S1
+// fires on the call site inside `summarize`.
+//
+// Expected: exactly one S1 marad pointing at the call to
+// `deep_scan`. The diagnosis names both the caller and the
+// producer; the minimal_fix names the repair ("propagate the
+// union in summarize's return type").
+
+bismillah Collapsed {
+    authority: NAMING_MD
+    serves: purpose_hierarchy.balance_for_living_systems
+    scope: scan
+    not_scope: nothing_excluded
+}
+
+fn deep_scan() -> Integrity | Incomplete {
+    if not readable {
+        return Incomplete {
+            reason: "corrupted",
+            max_confidence: 0.5,
+            partial_findings: empty_list
+        }
+    }
+    return Integrity
+}
+
+fn summarize() -> Integrity {
+    deep_scan()
+    return Integrity
+}

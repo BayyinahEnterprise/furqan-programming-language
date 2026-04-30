@@ -8,6 +8,77 @@ thesis paper.
 
 ---
 
+## Verified state at Session 1.10 close (D11 status-coverage shipped, v0.8.0)
+
+| Metric                            | Value                                                |
+|-----------------------------------|------------------------------------------------------|
+| Phase                             | 3 (post-Phase-2 polish + extensions; runtime not yet) |
+| Sub-phase                         | D11, status-coverage (consumer-side scan-incomplete dual) (**SHIPPED**) |
+| Primitives implemented            | **7 of 7 core** + D11 checker extension              |
+| Test count                        | **366 passing in 0.47s** (v0.7.1 baseline: 334; net +32) |
+| Test files                        | 13 (added `test_status_coverage`)                    |
+| Public symbols on `furqan.parser` | 42 (unchanged, D11 adds no AST nodes)               |
+| Public symbols on `furqan.checker`| 32 (was 29; +3 status-coverage entry points)         |
+| Public symbols on `furqan.errors` | 4 (unchanged)                                        |
+| Runtime dependencies              | **0** (Python stdlib only)                           |
+| Reserved keywords                 | 28 (unchanged, D11 introduces no keywords)          |
+| Fixtures                          | + status_coverage(4 valid + 3 invalid)               |
+| Package version                   | `0.8.0` (minor bump for new public exports + new checker module) |
+| Compliance state at handoff       | **COMPLIANT**, producer-side AND consumer-side scan-incomplete discipline now closed; capstone integration test still green |
+| CI                                | GitHub Actions on Python 3.10-3.13; surface and version-sync gates green |
+
+### What shipped in Session 1.10
+
+* `furqan/checker/status_coverage.py` implementing S1, S2 (S3 is the no-diagnostic case)
+* 7 paired `.furqan` fixtures (4 valid + 3 invalid in `tests/fixtures/status_coverage/`)
+* 32 new tests (sweep + per-case + edge cases + strict variant + cross-primitive + render + surface)
+* Public surface: `check_status_coverage`, `check_status_coverage_strict`, `STATUS_COVERAGE_PRIMITIVE_NAME`, plus the `StatusCoverageDiagnostic = Marad | Advisory` union type alias on the sub-module surface
+* CHECKER.md §9 documenting the consumer-side discipline and the local-scope limitation
+* CHANGELOG v0.8.0 entry registering D25 and D26 as deferred
+
+### Closing register
+
+**Test count delta (Tier 1):** 334 to 366 in 0.47s. Verified by `pytest --collect-only` and full-suite run.
+
+**Tier-tagged claims:**
+
+* **Tier 1 (implemented + tested):** S1 collapse detection on bare-TypePath callers; S1 detection on union returns whose arms are not exactly Integrity and Incomplete; per-call-site firing (multiple_collapses fixture: 2 separate marads); S2 advisory on no-return-type callers; recursive-producer S3 silence; cross-module call silence (external_call_only fixture); two mutually-calling producers both pass S3; strict variant raises only on Marads; producer-map empty short-circuit on no-producer modules; per-call-site location (call.span); diagnostic strings name both caller and producer; primitive name "status_coverage" stable; the seven-primitive integration capstone fixture still passes all eight checkers (six prior + ring-close + status-coverage) with zero marads.
+* **Tier 2 (structural, designed, partially tested):** S1 inflicts one marad per call site; if a single function calls the producer twice with bare-Integrity return, the test suite asserts `len(marads) == 1` for the multi-caller case but does not pin per-call within a single function. Best-effort.
+* **Tier 3 (hypothesis, deferred):** D25 transitive collapse; D26 branch-level exhaustiveness; D23 cross-module resolution.
+
+**Honest null results:**
+
+* D11 only resolves callees within the same module. A call to a function defined in another module silently passes (it cannot be proved or disproved as a producer at this layer). A future cross-module pass (D23) will close this gap.
+* D11 detects collapse at the return-type level only; a caller that uses `if/else` to inspect both arms of the union (rather than propagating in the return type) is currently flagged because the return type still narrows. This is the D26 limitation: branch-level exhaustiveness needs control-flow analysis. Acknowledged at the diagnostic-text level (the minimal_fix says "branch-level exhaustiveness checking is registered as D26").
+* `_is_integrity_incomplete_union` is replicated locally in status_coverage.py rather than imported from incomplete.py because the equivalent helper there is underscore-prefixed (private). The two implementations are textually identical; a future polish patch could promote the one in incomplete.py to public and have status_coverage import it. The string constants (`INTEGRITY_TYPE_NAME`, `INCOMPLETE_TYPE_NAME`) ARE imported from the public surface so the canonical names live in exactly one place.
+* No fixtures failed to express their intent. No tests pass for the wrong reason.
+
+**Demo readiness, status-collapse path:**
+
+A novel inline module exercising the canonical S1 collapse:
+
+```
+fn deep_scan(f: Integrity) -> Integrity | Incomplete { ... }
+fn report(f: Integrity) -> Integrity {
+    deep_scan(f)
+    return Integrity
+}
+```
+
+`check_status_coverage(parse(src))` returns one Marad. Sub-millisecond on novel input.
+
+### Open items for next session
+
+* **D9 / D20 / D23**, multi-module / cross-module analysis (cycle detection, ring-close type resolution, status-coverage producer resolution). These three deferred items share the cross-module-graph machinery; a single Phase 3 module-loader pass closes all three.
+* **D25 (NEW)**, transitive status-collapse detection.
+* **D26 (NEW)**, branch-level exhaustiveness on union returns.
+* **D11-D17** carryover items from earlier sessions (max_confidence range, mizan runtime, etc.).
+
+**Next phase:** Phase 3 runtime evaluator OR cross-module pass (D9/D20/D23/D25 batch). Polish-patch protocol still applies.
+
+---
+
+
 ## Verified state at Session 1.8 close (Phase 2.9 shipped, COMPLIANT, RING CLOSED)
 
 | Metric                            | Value                                                |

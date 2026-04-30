@@ -261,5 +261,3 @@ knowledge.* (20:114)
 The protocol is a tool, not a wall. When it gets in the way of
 shipping honest code, the protocol is the thing to revise, but the
 revision is itself a proposal that goes through the same protocol.
-
-*Bismillah.*

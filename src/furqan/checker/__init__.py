@@ -43,6 +43,11 @@ from .ring_close import (
     check_ring_close,
     check_ring_close_strict,
 )
+from .status_coverage import (
+    PRIMITIVE_NAME as STATUS_COVERAGE_PRIMITIVE_NAME,
+    check_status_coverage,
+    check_status_coverage_strict,
+)
 
 __all__ = [
     # Bismillah scope (Phase 2.3)
@@ -81,4 +86,8 @@ __all__ = [
     "RING_CLOSE_BUILTIN_TYPE_NAMES",
     "check_ring_close",
     "check_ring_close_strict",
+    # Status-coverage / consumer-side exhaustiveness (D11, v0.8.0)
+    "STATUS_COVERAGE_PRIMITIVE_NAME",
+    "check_status_coverage",
+    "check_status_coverage_strict",
 ]

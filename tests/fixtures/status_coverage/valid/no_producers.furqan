@@ -1,0 +1,26 @@
+// D11 fixture #2 (valid) - module with no producer at all.
+//
+// No function in this module returns Integrity | Incomplete, so
+// the producer map is empty and the checker exits trivially. Pins
+// the early-return path: a module that does not exercise the
+// scan-incomplete primitive must not be flagged for status-collapse
+// it cannot have committed.
+
+bismillah NoProducers {
+    authority: NAMING_MD
+    serves: purpose_hierarchy.balance_for_living_systems
+    scope: noop
+    not_scope: nothing_excluded
+}
+
+type Document {
+    zahir { name: String }
+    batin { id: ID }
+}
+
+fn parse() -> Document {
+    return Document
+}
+
+fn noop() {
+}

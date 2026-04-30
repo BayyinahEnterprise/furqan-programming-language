@@ -1,0 +1,25 @@
+// D11 fixture #3 (valid) - a producer that calls itself recursively.
+//
+// `scan_recursive` is a producer (returns Integrity | Incomplete)
+// and calls itself. The recursive call is dispatched against the
+// producer map; the caller's return type IS the union, so S3 fires
+// (no diagnostic). Pins that recursion is not a special case.
+
+bismillah Recursive {
+    authority: NAMING_MD
+    serves: purpose_hierarchy.balance_for_living_systems
+    scope: scan
+    not_scope: nothing_excluded
+}
+
+fn scan_recursive() -> Integrity | Incomplete {
+    if not done {
+        scan_recursive()
+        return Incomplete {
+            reason: "still working",
+            max_confidence: 0.5,
+            partial_findings: empty_list
+        }
+    }
+    return Integrity
+}

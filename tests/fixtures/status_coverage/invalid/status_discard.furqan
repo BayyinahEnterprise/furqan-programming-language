@@ -1,0 +1,33 @@
+// D11 fixture #6 (invalid) - canonical S2 status discard.
+//
+// `run_scan` is a producer. `main` calls `run_scan` but declares
+// no return type; the producer's result is silently discarded.
+// Case S2 fires as an Advisory rather than a Marad: the function
+// may be intentionally effectful, but the developer should be
+// informed that the union is being thrown away.
+//
+// Expected: exactly one S2 advisory pointing at the call site.
+// The strict-variant gate must NOT raise on this fixture (S2 is
+// informational by design).
+
+bismillah Discarded {
+    authority: NAMING_MD
+    serves: purpose_hierarchy.balance_for_living_systems
+    scope: orchestrate
+    not_scope: nothing_excluded
+}
+
+fn run_scan() -> Integrity | Incomplete {
+    if not present {
+        return Incomplete {
+            reason: "missing",
+            max_confidence: 0.5,
+            partial_findings: empty_list
+        }
+    }
+    return Integrity
+}
+
+fn main() {
+    run_scan()
+}

@@ -1,0 +1,32 @@
+// D11 fixture #4 (valid) - calls only externally-defined functions.
+//
+// `report` calls `external_helper`, which is NOT defined in this
+// module. The producer map is built from local functions only;
+// `external_helper` is not a producer for the purposes of this
+// checker. Cross-module producer resolution is registered as D23
+// (Phase 3+). Pins the local-scope-only behaviour: an unresolvable
+// callee never fires S1 or S2, even when the caller's return type
+// would otherwise be a collapse.
+
+bismillah ExternalOnly {
+    authority: NAMING_MD
+    serves: purpose_hierarchy.balance_for_living_systems
+    scope: report
+    not_scope: nothing_excluded
+}
+
+fn local_producer() -> Integrity | Incomplete {
+    if not ready {
+        return Incomplete {
+            reason: "not ready",
+            max_confidence: 0.5,
+            partial_findings: empty_list
+        }
+    }
+    return Integrity
+}
+
+fn report() -> Integrity {
+    external_helper()
+    return Integrity
+}
