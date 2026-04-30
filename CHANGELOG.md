@@ -12,6 +12,86 @@ itself (NAMING.md §6).
 
 ---
 
+## [0.10.0] - 2026-04-30
+
+**D9/D20 / Phase 1 multi-module support.** Furqan grows beyond
+single files. A new `Project` class parses multiple `.furqan`
+files, builds the dependency graph from each module's tanzil
+declarations, and runs three new graph-level checks. The CLI
+gains a directory mode: `furqan check src/` checks every
+`.furqan` file in the directory, with optional `--graph-only`
+for dependency-structure validation without per-module analysis.
+
+A minor-version bump (0.9.x -> 0.10.0) reflects new architectural
+capability. Per-module checkers are unchanged; the language now
+composes across compilation units.
+
+### Added
+- **D9/D20: Multi-module graph analysis.**
+  - New module: `src/furqan/project.py` with the `Project` class.
+  - `Project.add_file` and `Project.add_directory` parse files
+    and index them by bismillah name.
+  - `Project.dependency_graph` returns the adjacency list built
+    from each module's tanzil declarations.
+  - `Project.topological_order` returns a deterministic dependency
+    order via Kahn's algorithm (or `None` on cycle).
+  - `Project.check_graph` runs the three graph-level cases:
+    - **G1, missing dependency target (Marad).** A tanzil block
+      declares `depends_on: X` but no module named `X` is in the
+      project.
+    - **G2, cross-module cycle (Marad).** The dependency graph
+      contains a cycle. Each cycle is named in the diagnosis
+      with an arrow chain (`A -> B -> C -> A`), canonicalized
+      so the lexicographically-smallest member is the head.
+    - **G3, orphan module (Advisory).** A multi-module project
+      contains a module with no dependencies and no incoming
+      edges. Informational, not a structural violation.
+- **CLI directory mode.**
+  - `furqan check <directory>` parses every `.furqan` file in
+    the directory, runs graph-level checks, and runs the nine
+    per-module checkers in topological order.
+  - `furqan check <directory> --graph-only` skips per-module
+    analysis and reports only graph-level diagnostics.
+  - Single-file mode (`furqan check file.furqan`) is unchanged
+    and continues to work exactly as in v0.9.0.
+- **Multi-module fixtures.** Six new fixture directories under
+  `tests/fixtures/multi_module/`: `valid/linear_chain`,
+  `valid/diamond`, `valid/standalone`, `invalid/missing_target`,
+  `invalid/cycle`, `invalid/long_cycle`.
+- **42 new tests** in `tests/test_multi_module.py` (project
+  construction, dependency graph, topological sort, G1/G2/G3,
+  CLI directory mode, public-surface contract). Total suite:
+  **495 tests** (453 baseline + 42 new).
+- **Public surface.** `Project` is exported from `furqan` at the
+  top level. The parser and checker surfaces are unchanged.
+
+### Changed
+- `pyproject.toml` and `src/furqan/__init__.py`: version bumped
+  to `0.10.0`.
+
+### Unchanged
+- All 453 v0.9.0 tests pass identically. The nine per-module
+  checkers (bismillah, zahir_batin, mizan, tanzil, ring_close,
+  incomplete, status_coverage, return_type_match,
+  all_paths_return) are not modified. 28 keywords. 7 primitives.
+
+### Deferred (Phase 2 and 3 of multi-module support)
+- **D23 (Phase 2): cross-module type resolution.** Ring-close R1
+  still fires for any type not defined in the current module,
+  even if the type is defined in a declared dependency. D23 will
+  use the graph from this release to resolve type references
+  across module boundaries.
+- **Cross-module D11 (Phase 3): status-coverage propagation.**
+  D11 still operates on a single module. Future work will follow
+  function calls across module boundaries.
+- **External-dependency declarations.** G1 currently fires on
+  every dependency target not present in the project. There is
+  no syntax yet for marking a dependency as external (vendored
+  or from a registry). When that surface lands, G1 will gain an
+  exception path.
+
+---
+
 ## [0.9.0] - 2026-04-30
 
 **Phase 3.1 / Session 1.13 - CLI entry point.** Furqan becomes a

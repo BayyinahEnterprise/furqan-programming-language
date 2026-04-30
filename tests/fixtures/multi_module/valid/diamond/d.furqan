@@ -1,0 +1,9 @@
+// D9/D20 diamond fixture, root D.
+// D has no dependencies. Both B and C depend on D.
+
+bismillah D {
+    authority: NAMING_MD
+    serves: purpose_hierarchy.balance_for_living_systems
+    scope: provide_root
+    not_scope: nothing_excluded
+}

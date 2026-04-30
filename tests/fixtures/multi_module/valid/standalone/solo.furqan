@@ -1,0 +1,9 @@
+// D9/D20 standalone fixture. One module, no tanzil block,
+// trivially valid as a single-file project.
+
+bismillah Solo {
+    authority: NAMING_MD
+    serves: purpose_hierarchy.balance_for_living_systems
+    scope: stand_alone
+    not_scope: nothing_excluded
+}
