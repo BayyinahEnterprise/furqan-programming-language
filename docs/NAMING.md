@@ -230,9 +230,9 @@ as Phase 2.0–2.6 English-alias precedents (`scope_block`,
 Phase 2.8 promotes two keywords for the Tanzil build-ordering
 block:
 
-- **`tanzil`**, block declaration head. Arabic for "revelation"
-  / "progressive descent" (Al-Isra 17:106). Not a common English
-  word; no identifier collision risk.
+- **`tanzil`**, block declaration head. Arabic for "progressive
+  descent." Not a common English word; no identifier collision
+  risk.
 - **`depends_on`**, single canonical field-head keyword inside
   a tanzil block. The snake_case form is consistent with both the
   Phase-2.7 Arabic-transliteration convention (§1.7) and the

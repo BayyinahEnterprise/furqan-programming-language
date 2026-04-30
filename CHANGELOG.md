@@ -447,8 +447,7 @@ Furqan's sixth compile-time primitive, lands. The thesis
 mechanism is implementable; this session demonstrates it. This is
 the language-level transposition of build-ordering discipline
 (Bayyinah's cost-class taxonomy A/B/C/D ordering, generalized to
-inter-module dependencies declared explicitly), anchored on
-Al-Isra 17:106, *"revealed progressively, tanzilan."*
+inter-module dependencies declared explicitly).
 
 A minor-version bump (0.5.x → 0.6.0) reflects the source-language
 additions: two new keywords (`tanzil`, `depends_on`) and one new

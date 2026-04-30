@@ -1,6 +1,6 @@
 # Furqan
 
-[![CI](https://github.com/BayyinahEnterprise/furqan/actions/workflows/ci.yml/badge.svg)](https://github.com/BayyinahEnterprise/furqan/actions/workflows/ci.yml)
+[![CI](https://github.com/BayyinahEnterprise/Furqan---Honest-Programming-Language/actions/workflows/ci.yml/badge.svg)](https://github.com/BayyinahEnterprise/Furqan---Honest-Programming-Language/actions/workflows/ci.yml)
 
 A programming-language type-checker that enforces structural honesty
 at compile time. Furqan rejects code shapes that promise more than
@@ -47,6 +47,9 @@ zero runtime dependencies and no model in the loop.
 | 5 | Mizan calibration     | `checker/mizan.py`           | **Shipped** (Session 1.6, v0.5.0)           |
 | 6 | Tanzil build ordering | `checker/tanzil.py`          | **Shipped** (Session 1.7, v0.6.0)           |
 | 7 | Ring-close            | `checker/ring_close.py`      | **Shipped** (Session 1.8, v0.7.0)           |
+| + | Status-coverage (D11) | `checker/status_coverage.py` | **Shipped** (Session 1.10, v0.8.0)          |
+| + | Return-type match (D22)| `checker/return_type_match.py`| **Shipped** (Session 1.11, v0.8.1)         |
+| + | All-paths-return (D24)| `checker/all_paths_return.py`| **Shipped** (Session 1.12, v0.8.2)          |
 
 **Seven of seven primitives shipped, the ring is closed.** Each row corresponds to a single
 closing `HANDOFF.md` block; each version corresponds to a
