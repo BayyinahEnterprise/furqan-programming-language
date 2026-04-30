@@ -1,0 +1,24 @@
+// Phase 2.8 fixture #7 — Case T3: empty tanzil block (Advisory, not Marad).
+//
+// A tanzil block with zero dependency entries is not an error —
+// a module legitimately may have been evaluated for build ordering
+// and concluded it has no external dependencies. But the empty
+// declaration is structurally ambiguous: did the developer mean to
+// declare zero dependencies, or did they leave the block empty as
+// a stub?
+//
+// The checker emits an Advisory rather than a Marad: visible
+// surface for the question, no compile failure. Same discipline
+// as the additive-only checker's undeclared-rename Advisory:
+// informational evidence the developer should review, not
+// structural prohibition.
+
+bismillah EmptyOrder {
+    authority: NAMING_MD
+    serves: purpose_hierarchy.balance_for_living_systems
+    scope: compile
+    not_scope: nothing_excluded
+}
+
+tanzil empty_deps {
+}

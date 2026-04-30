@@ -1,0 +1,24 @@
+// A module that declares its scope and respects it.
+//
+// The Bismillah scope checker should produce zero diagnostics for
+// this file: every call site invokes a head identifier that is NOT
+// in the not_scope list.
+
+bismillah ScanService {
+    authority: NAMING_MD, BaseAnalyzer_Contract
+    serves: purpose_hierarchy.truth_over_falsehood,
+            protect.artificial_systems
+    scope: orchestrate, dispatch, report
+    not_scope: parse_files, render_output, modify_input
+}
+
+fn run() {
+    orchestrate()
+    dispatch()
+    report()
+}
+
+fn run_with_input() {
+    orchestrate()
+    dispatch()
+}

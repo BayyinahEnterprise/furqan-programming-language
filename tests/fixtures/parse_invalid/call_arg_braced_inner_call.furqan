@@ -1,0 +1,29 @@
+// PARSE-INVALID — Session 1.2 c.3 patch.
+//
+// The load-bearing case: a balanced brace pair containing a nested
+// call inside the argument list. Before the c.3 patch this parsed
+// as `x()` with the inner call to `y` SILENTLY LOST. After the patch
+// the parser rejects with "Stray '{' inside call argument list".
+//
+// This is the case that motivated the patch: the Bismillah scope
+// checker depends on CallRef extraction being complete. If a
+// not_scope-violating call lived inside such a brace block, the
+// pre-patch parser would silently strip it from the AST before the
+// checker ever saw it — a Process-2 risk in the parser itself.
+//
+// Drill-down case 2 from the Perplexity parser review. If a future
+// Phase ever introduces an expression grammar that legitimately
+// uses braces inside calls (lambdas, blocks-as-expressions), this
+// fixture migrates to ``valid/`` and the corresponding test
+// inverts.
+
+bismillah Sloppy {
+    authority: NAMING_MD
+    serves: purpose_hierarchy.truth_over_falsehood
+    scope: orchestrate
+    not_scope: parse_files
+}
+
+fn run() {
+    x({ parse_files() })
+}

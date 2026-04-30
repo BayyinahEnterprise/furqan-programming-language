@@ -1,0 +1,59 @@
+// Phase 2.9 fixture #4 — the seven-primitive integration witness.
+//
+// A single module that exercises every primitive cleanly:
+//   - bismillah          (Phase 2.3)
+//   - zahir/batin types  (Phase 2.4)
+//   - additive_only      (Phase 2.5)
+//   - scan-incomplete    (Phase 2.6)
+//   - mizan              (Phase 2.7)
+//   - tanzil             (Phase 2.8)
+//   - ring-close         (Phase 2.9, this phase — every type
+//                         referenced, every function with declared
+//                         return type returns)
+//
+// Expected: zero marads from any of the seven checkers. Advisories
+// permitted (T3 empty-block does not fire here; R2 does not fire
+// because the module has both types and functions).
+
+bismillah FullSeven {
+    authority: NAMING_MD
+    serves: purpose_hierarchy.truth_over_falsehood
+    scope: scan_with_full_calibration
+    not_scope: nothing_excluded
+}
+
+additive_only module FullSeven_v1 v1.0 {
+    export verify: Function
+}
+
+type Document {
+    zahir {
+        rendered_text: String
+    }
+    batin {
+        raw_bytes: Bytes
+    }
+}
+
+tanzil full_deps {
+    depends_on: Foundation
+}
+
+mizan calibration {
+    la_tatghaw:  false_positive_rate < 0.05
+    la_tukhsiru: detection_rate > 0.90
+    bil_qist:    calibrate(corpus, paired_fixtures)
+}
+
+fn verify(file: Document) -> Integrity | Incomplete {
+    if not is_encrypted(file) {
+        return Integrity
+    }
+    if is_encrypted(file) {
+        return Incomplete {
+            reason: "encrypted container, no credentials",
+            max_confidence: 0.5,
+            partial_findings: empty_list
+        }
+    }
+}

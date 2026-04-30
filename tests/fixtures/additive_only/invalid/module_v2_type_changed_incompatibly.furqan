@@ -1,0 +1,30 @@
+// Phase 2.5 fixture #7 — Case 3 violation (type changed incompatibly).
+//
+// Same export name, different type. v1.0 declared
+// `export severity_weights: Weights`; v2.0 silently changes the type
+// to `Severity`. The name is preserved — every downstream consumer
+// will continue calling `severity_weights` — but the value's type is
+// no longer what the surface promised. This is the same Process-2
+// risk as a silent removal, only sharper: callers compile and break
+// at use rather than at link.
+//
+// Phase 2.5 uses structural AST equality on TypePath (same base,
+// same layer). Subtyping is deferred to Phase 3 (NAMING.md §6.x:
+// the additive-only invariant covers exact match in 2.5).
+//
+// Expected: Case 3 marad naming the symbol, the prior type, the new
+// type, and the rule violated. Recovery options: rename the export
+// (with `renames:` catalog entry), or remove + re-add as a new name.
+
+bismillah RegistryV2TypeChange {
+    authority: NAMING_MD
+    serves: purpose_hierarchy.truth_over_falsehood
+    scope: register
+    not_scope: nothing_excluded
+}
+
+additive_only module ScanRegistry v2.0 {
+    export mechanism_registry: Registry
+    export severity_weights: Severity
+    export scan_limits: ScanLimits
+}

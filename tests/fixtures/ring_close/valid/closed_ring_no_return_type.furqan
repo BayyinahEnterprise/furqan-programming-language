@@ -1,0 +1,30 @@
+// Phase 2.9 fixture #3 — function without a declared return type
+// is not subject to R3.
+//
+// R3 fires only when a function declares a return type but lacks a
+// `return` statement. A void-style function (no `-> Type` clause)
+// has nothing to return and is therefore well-formed even with an
+// empty body. Pins that ring-close does not impose return-statement
+// requirements on functions that did not declare a return type.
+//
+// Expected: zero diagnostics. The function `init` declares no return
+// type; the absence of a `return` statement is not an R3 violation.
+
+bismillah VoidFunction {
+    authority: NAMING_MD
+    serves: purpose_hierarchy.truth_over_falsehood
+    scope: init
+    not_scope: nothing_excluded
+}
+
+type Config {
+    zahir {
+        version: String
+    }
+    batin {
+        backing_store: Path
+    }
+}
+
+fn init(cfg: Config) {
+}

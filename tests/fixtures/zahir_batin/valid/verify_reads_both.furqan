@@ -1,0 +1,28 @@
+// Phase 2.4 fixture #2 — the canonical verify() example from
+// thesis §3.2.
+//
+// `fn verify(doc: Document)` takes the unqualified compound type,
+// which Phase 2.4 permits ONLY for functions named verify. The body
+// reads both layers via doc.zahir and doc.batin and passes them to
+// compare(). The zahir/batin checker must accept this: verify is the
+// designated cross-layer construct.
+
+bismillah VerifyBoth {
+    authority: NAMING_MD
+    serves: purpose_hierarchy.truth_over_falsehood
+    scope: compare_layers
+    not_scope: nothing_excluded
+}
+
+type Document {
+    zahir {
+        rendered_text: String
+    }
+    batin {
+        raw_bytes: Bytes
+    }
+}
+
+fn verify(doc: Document) {
+    compare(doc.zahir, doc.batin)
+}

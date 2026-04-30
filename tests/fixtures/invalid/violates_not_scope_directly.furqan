@@ -1,0 +1,16 @@
+// A module that explicitly excludes 'parse_files' in its not_scope
+// list, then calls parse_files() inside a function. The Bismillah
+// scope checker must reject this with a diagnostic naming the
+// offending symbol and the rule it violates.
+
+bismillah Sloppy {
+    authority: NAMING_MD
+    serves: purpose_hierarchy.truth_over_falsehood
+    scope: orchestrate
+    not_scope: parse_files, render_output
+}
+
+fn run() {
+    orchestrate()
+    parse_files()    // SCOPE VIOLATION — head 'parse_files' in not_scope
+}

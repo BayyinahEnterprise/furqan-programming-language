@@ -1,0 +1,32 @@
+// Phase 2.9 fixture #5 — R1: undefined type reference (Marad).
+//
+// A function declares a return type that does not correspond to any
+// declared compound type, parameter type, or recognised builtin
+// (`Integrity`, `Incomplete`). The ring is broken: the function
+// promises a `Summary` it has no way to produce because no `Summary`
+// type is in scope.
+//
+// Expected: exactly one R1 marad pointing at the `Summary` return-
+// type span. The Marad's diagnosis identifies the dangling reference
+// and the minimal_fix names the two repair paths (declare the type,
+// or change the return type to a declared type).
+
+bismillah BrokenRing {
+    authority: NAMING_MD
+    serves: purpose_hierarchy.truth_over_falsehood
+    scope: ingest
+    not_scope: nothing_excluded
+}
+
+type Document {
+    zahir {
+        rendered_text: String
+    }
+    batin {
+        raw_bytes: Bytes
+    }
+}
+
+fn summarize(doc: Document) -> Summary {
+    return Summary
+}

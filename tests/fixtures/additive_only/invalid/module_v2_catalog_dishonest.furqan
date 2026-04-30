@@ -1,0 +1,37 @@
+// Phase 2.5 fixture #8 — Case 4 violation (catalog dishonest).
+//
+// THE REFLEXIVITY TEST. This is the load-bearing fixture for
+// thesis Section 7, Failure Mode 1 ("performed alignment at the
+// version-declaration layer") applied to the additive-only escape
+// valve.
+//
+// The major_version_bump catalog claims `removes: severity_weights`,
+// but `severity_weights` is STILL exported. The developer is using
+// the escape valve as a smokescreen: declaring a removal that did
+// not happen, perhaps to placate a code reviewer or to suppress
+// the additive-only check on some other symbol.
+//
+// The escape valve cannot be allowed to lie. The whole framework
+// rests on the catalog being a truthful enumeration of breaking
+// changes. A catalog entry that contradicts the actual exports is
+// the same shape of dishonesty the system is designed to catch.
+//
+// Expected: Case 4 marad naming `severity_weights` and the
+// contradiction between the catalog claim and the exports list.
+
+bismillah RegistryV2DishonestCatalog {
+    authority: NAMING_MD
+    serves: purpose_hierarchy.truth_over_falsehood
+    scope: register
+    not_scope: nothing_excluded
+}
+
+additive_only module ScanRegistry v2.0 {
+    export mechanism_registry: Registry
+    export severity_weights: Weights
+    export scan_limits: ScanLimits
+
+    major_version_bump {
+        removes: severity_weights
+    }
+}

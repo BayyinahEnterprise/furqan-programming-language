@@ -1,0 +1,26 @@
+// Phase 3.0 D15 fixture #2 - pre-Phase-3.0 if-only shape still parses.
+//
+// Pins the additive-only invariant on the IfStmt AST: a function
+// using only the Phase 2.6 if-statement grammar (no else arm) must
+// continue to parse and check identically to its Phase 2.6
+// behaviour. The else_body field defaults to the empty tuple.
+
+bismillah PreD15Compat {
+    authority: NAMING_MD
+    serves: purpose_hierarchy.truth_over_falsehood
+    scope: scan
+    not_scope: nothing_excluded
+}
+
+fn scan() -> Integrity | Incomplete {
+    if not encrypted {
+        return Integrity
+    }
+    if encrypted {
+        return Incomplete {
+            reason: "encrypted",
+            max_confidence: 0.5,
+            partial_findings: empty_list
+        }
+    }
+}

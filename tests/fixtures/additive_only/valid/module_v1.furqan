@@ -1,0 +1,25 @@
+// Phase 2.5 fixture #1 — baseline v1.0.
+//
+// First version of a module. There is no prior version to compare
+// against (no sidecar). Per the additive-only checker's resolution
+// rules, an absent sidecar means "first version" → trivial pass.
+//
+// This fixture pins:
+//   - the additive_only module declaration grammar parses cleanly
+//   - the version literal v1.0 lexes and parses correctly
+//   - three exports with bare-IDENT types parse correctly
+//   - a module without a major_version_bump catalog is permitted
+//   - the checker passes a first-version module trivially
+
+bismillah RegistryV1 {
+    authority: NAMING_MD
+    serves: purpose_hierarchy.truth_over_falsehood
+    scope: register
+    not_scope: nothing_excluded
+}
+
+additive_only module ScanRegistry v1.0 {
+    export mechanism_registry: Registry
+    export severity_weights: Weights
+    export scan_limits: ScanLimits
+}

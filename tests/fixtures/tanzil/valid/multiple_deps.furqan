@@ -1,0 +1,17 @@
+// Phase 2.8 fixture #2 — two distinct dependencies.
+//
+// Confirms the dependency-list grammar accepts multiple
+// `depends_on:` lines and that the T2 duplicate check distinguishes
+// distinct module paths from repeated ones.
+
+bismillah Analytics {
+    authority: NAMING_MD
+    serves: purpose_hierarchy.balance_for_living_systems
+    scope: analyze
+    not_scope: nothing_excluded
+}
+
+tanzil analytics_deps {
+    depends_on: CoreModule
+    depends_on: DataLoader
+}

@@ -1,0 +1,28 @@
+// Phase 2.5 fixture #6 — Case 2 ENFORCEMENT violation.
+//
+// The developer declares a rename in the major_version_bump catalog
+// (`renames: severity_weights -> severity_table`) but the new name
+// is missing from the actual exports list. The catalog is making a
+// claim — "I renamed X to Y" — that the export list contradicts.
+//
+// This is the catalog-dishonesty failure mode applied to renames
+// (Case 4 logic, surfaced under Case 2 enforcement for clarity).
+// The checker must emit a marad naming the dishonest declaration:
+// declared `renames: old -> new`, but `new` was never added to
+// the exports list (or `old` is still present).
+
+bismillah RegistryV2DishonestRename {
+    authority: NAMING_MD
+    serves: purpose_hierarchy.truth_over_falsehood
+    scope: register
+    not_scope: nothing_excluded
+}
+
+additive_only module ScanRegistry v2.0 {
+    export mechanism_registry: Registry
+    export scan_limits: ScanLimits
+
+    major_version_bump {
+        renames: severity_weights -> severity_table
+    }
+}

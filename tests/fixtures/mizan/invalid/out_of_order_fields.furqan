@@ -1,0 +1,30 @@
+// Phase 2.7 fixture #8 — Case M4: fields in non-canonical order.
+//
+// All three canonical fields are present, no duplicates, no
+// unknown fields — but the order is wrong. Canonical order
+// (per thesis §Primitive 4 example 1): la_tatghaw, then
+// la_tukhsiru, then bil_qist. This fixture puts bil_qist first,
+// then la_tatghaw, then la_tukhsiru.
+//
+// Why enforce order. The thesis paper presents the three calibration
+// commands in a specific sequence corresponding to Ar-Rahman 55:7-9:
+// "do not transgress" first, "establish weight in justice" implicitly
+// orders the do-not-transgress and do-not-make-deficient commands
+// before the calibrate command. Pinning the order in the language
+// preserves the textual sequence the discipline derives from.
+//
+// Expected: one M4 marad naming the out-of-order condition,
+// citing the canonical sequence.
+
+bismillah OutOfOrder {
+    authority: NAMING_MD
+    serves: purpose_hierarchy.balance_for_living_systems
+    scope: calibrate
+    not_scope: nothing_excluded
+}
+
+mizan out_of_order {
+    bil_qist:    calibrate(corpus, paired_fixtures)
+    la_tatghaw:  false_positive_rate < 0.05
+    la_tukhsiru: detection_rate > 0.90
+}

@@ -1,0 +1,45 @@
+// Phase 2.9 fixture #2 — two types, two functions, every type
+// referenced by some function's signature.
+//
+// Confirms ring-close composes when the module has multiple types
+// and multiple functions: each type must be referenced by at least
+// one function (R4), each function with a declared return type must
+// have a return statement (R3), every type referenced must be
+// declared somewhere (R1).
+//
+// Expected: zero diagnostics. The ring closes through mutual
+// reference: `ingest` returns `Document`, `summarize` parameterizes
+// on `Document` and returns `Summary`.
+
+bismillah TwoTypes {
+    authority: NAMING_MD
+    serves: purpose_hierarchy.truth_over_falsehood
+    scope: ingest_summarize
+    not_scope: nothing_excluded
+}
+
+type Document {
+    zahir {
+        rendered_text: String
+    }
+    batin {
+        raw_bytes: Bytes
+    }
+}
+
+type Summary {
+    zahir {
+        headline: String
+    }
+    batin {
+        evidence_spans: SpanList
+    }
+}
+
+fn ingest() -> Document {
+    return Document
+}
+
+fn summarize(doc: Document) -> Summary {
+    return Summary
+}

@@ -1,0 +1,22 @@
+// Phase 2.5 fixture #2 — v2.0 adds one export to the v1.0 surface.
+//
+// Pure additive growth: every v1.0 export is preserved, plus one new
+// export. The additive-only invariant is satisfied without needing a
+// major_version_bump catalog. The sidecar (.furqan_history) declares
+// v1.0 as the prior version against which this is compared.
+//
+// Expected: the checker passes with zero diagnostics.
+
+bismillah RegistryV2 {
+    authority: NAMING_MD
+    serves: purpose_hierarchy.truth_over_falsehood
+    scope: register
+    not_scope: nothing_excluded
+}
+
+additive_only module ScanRegistry v2.0 {
+    export mechanism_registry: Registry
+    export severity_weights: Weights
+    export scan_limits: ScanLimits
+    export new_thing: NewType
+}

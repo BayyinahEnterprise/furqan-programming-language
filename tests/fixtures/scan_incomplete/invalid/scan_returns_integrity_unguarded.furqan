@@ -1,0 +1,35 @@
+// Phase 2.6 fixture #5 — Case A violation: bare Integrity, no guard.
+//
+// THE LOAD-BEARING DEMO FIXTURE. A function declared
+// `-> Integrity | Incomplete` whose single return statement produces
+// bare Integrity with no incompleteness predicate evaluated anywhere
+// in the body. Every downstream caller would receive Integrity for
+// every input, defeating the union-return-type contract: the
+// `Incomplete` arm of the union is never reached, so the function's
+// declared inability to fully process certain inputs is a false
+// promise.
+//
+// The thesis paper §4 names this as the canonical Process-2 risk in
+// return-type form. Bayyinah's `apply_scan_incomplete_clamp` enforces
+// the equivalent rule at scanner level: a scanner that reports
+// integrity_score=1.0 on a document it could not fully read is
+// telling the reader the document displays and contains the same
+// content, when in fact it did not display or contain anything
+// legible to the scanner. Phase 2.6 transposes that runtime check
+// into a compile-time type rule.
+//
+// Expected: one Case A marad naming the function (`scan_unsafely`),
+// the unguarded return path, and the rule violated. Recovery options
+// in the marad's minimal_fix: either add an `if not <pred>` guard,
+// or change the function's declared return type to bare Integrity.
+
+bismillah Sloppy {
+    authority: NAMING_MD
+    serves: purpose_hierarchy.truth_over_falsehood
+    scope: scan
+    not_scope: nothing_excluded
+}
+
+fn scan_unsafely(file: File) -> Integrity | Incomplete {
+    return Integrity
+}

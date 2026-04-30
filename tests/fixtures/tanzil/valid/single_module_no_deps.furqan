@@ -1,0 +1,16 @@
+// Phase 2.8 fixture #1 — simplest valid case.
+//
+// A module declaring exactly one dependency. The smallest non-empty
+// tanzil block. Confirms the canonical grammar shape parses cleanly
+// and the checker emits zero diagnostics.
+
+bismillah BuildOrdering {
+    authority: NAMING_MD
+    serves: purpose_hierarchy.balance_for_living_systems
+    scope: compile
+    not_scope: nothing_excluded
+}
+
+tanzil build_order {
+    depends_on: CoreModule
+}

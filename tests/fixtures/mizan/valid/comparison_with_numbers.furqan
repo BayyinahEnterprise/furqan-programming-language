@@ -1,0 +1,26 @@
+// Phase 2.7 fixture #4 — reversed comparison orientation.
+//
+// The bound expression `0.05 > false_positive_rate` is logically
+// equivalent to `false_positive_rate < 0.05`. The grammar must
+// accept both orientations — over-constraining operand order would
+// be the Cow Episode applied to the parser (refusing legitimate
+// expressions in service of a non-load-bearing convention).
+//
+// This fixture pins that the parser is permissive on operand
+// order. The well-formedness checker also has nothing to say about
+// orientation; semantic equivalence is a runtime concern.
+//
+// Expected: parses cleanly, zero marads.
+
+bismillah ReversedOrientation {
+    authority: NAMING_MD
+    serves: purpose_hierarchy.balance_for_living_systems
+    scope: calibrate
+    not_scope: nothing_excluded
+}
+
+mizan reversed_orientation {
+    la_tatghaw:  0.05 > false_positive_rate
+    la_tukhsiru: detection_rate > 0.90
+    bil_qist:    calibrate(corpus, paired_fixtures)
+}

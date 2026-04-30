@@ -1,0 +1,21 @@
+// Sidecar for module_v2_added_export.furqan.
+//
+// Contains the prior version(s) of ScanRegistry that the additive-
+// only checker compares the current module against. Phase 2.5 sidecar
+// format: a regular .furqan file containing one Bismillah block and
+// one or more `additive_only module Name vN.M { ... }` declarations,
+// each at a distinct version. The sidecar parser is a thin wrapper
+// over the standard module parser.
+
+bismillah HistoryHolder {
+    authority: NAMING_MD
+    serves: archival.history
+    scope: archive
+    not_scope: nothing_excluded
+}
+
+additive_only module ScanRegistry v1.0 {
+    export mechanism_registry: Registry
+    export severity_weights: Weights
+    export scan_limits: ScanLimits
+}

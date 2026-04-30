@@ -1,0 +1,10 @@
+// A Bismillah block with no functions yet — the most degenerate
+// valid module. The scope checker has nothing to verify and must
+// trivially accept this file.
+
+bismillah Stub {
+    authority: NAMING_MD
+    serves: purpose_hierarchy.truth_over_falsehood
+    scope: nothing_yet
+    not_scope: parse_files
+}

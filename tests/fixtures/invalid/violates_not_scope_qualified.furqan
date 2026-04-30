@@ -1,0 +1,16 @@
+// The not_scope rule applies to the head of a qualified call path.
+// 'render_output.html' has head 'render_output', which is excluded.
+// The checker must catch this; otherwise an attacker could trivially
+// evade not_scope by qualifying their call.
+
+bismillah Sloppy {
+    authority: NAMING_MD
+    serves: purpose_hierarchy.truth_over_falsehood
+    scope: orchestrate
+    not_scope: render_output
+}
+
+fn run() {
+    orchestrate()
+    render_output.html()   // SCOPE VIOLATION — head is 'render_output'
+}

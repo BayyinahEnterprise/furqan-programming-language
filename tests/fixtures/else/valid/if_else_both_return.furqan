@@ -1,0 +1,28 @@
+// Phase 3.0 D15 fixture #1 - both arms terminate cleanly.
+//
+// The function declares `-> Integrity | Incomplete`. The if-condition
+// is `not encrypted`: the if-body executes when the file is NOT
+// encrypted (incompleteness ruled out), so bare Integrity is honest.
+// The else-body executes when the file IS encrypted, so the
+// Incomplete arm carries the required-fields literal. Every primitive
+// passes: ring-close R3 (return present in both arms), scan-incomplete
+// (Case A guarded on the if-side, Incomplete shape on the else-side).
+
+bismillah ElseDemo {
+    authority: NAMING_MD
+    serves: purpose_hierarchy.truth_over_falsehood
+    scope: scan
+    not_scope: nothing_excluded
+}
+
+fn scan() -> Integrity | Incomplete {
+    if not encrypted {
+        return Integrity
+    } else {
+        return Incomplete {
+            reason: "encrypted container",
+            max_confidence: 0.5,
+            partial_findings: empty_list
+        }
+    }
+}

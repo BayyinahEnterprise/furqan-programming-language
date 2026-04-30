@@ -1,0 +1,21 @@
+// Phase 2.7 fixture #3 — bil_qist with a string-literal argument.
+//
+// Phase 2.6 introduced the STRING token; this fixture confirms
+// strings compose with the new mizan grammar. The bil_qist call
+// passes a single string argument (`"paired_corpus_v3"`) — typical
+// when the calibration corpus is identified by a versioned name.
+//
+// Expected: parses cleanly, zero marads.
+
+bismillah StringCalDemo {
+    authority: NAMING_MD
+    serves: purpose_hierarchy.balance_for_living_systems
+    scope: calibrate
+    not_scope: nothing_excluded
+}
+
+mizan named_corpus_calibration {
+    la_tatghaw:  false_positive_rate < 0.05
+    la_tukhsiru: detection_rate > 0.90
+    bil_qist:    calibrate("paired_corpus_v3")
+}

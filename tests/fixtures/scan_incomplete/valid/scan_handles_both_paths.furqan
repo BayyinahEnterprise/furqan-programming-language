@@ -1,0 +1,36 @@
+// Phase 2.6 fixture #2 — the canonical honest scan-incomplete shape.
+//
+// A function declared `-> Integrity | Incomplete` with two return
+// paths. The bare-Integrity branch is gated by `if not is_encrypted(file)`
+// — the incompleteness predicate is explicitly ruled out before the
+// Integrity is returned. The Incomplete branch is gated by
+// `if is_encrypted(file)` and produces a fully-populated Incomplete
+// literal (reason, max_confidence, partial_findings).
+//
+// This is the shape the thesis paper §4 names as the discipline:
+// every Integrity return guarded by an explicit incompleteness
+// check, every Incomplete return carrying diagnostic content.
+//
+// Expected: zero diagnostics. The producer-side checker walks every
+// `return Integrity` statement, finds it inside an `if not <expr>`
+// body, and accepts.
+
+bismillah HonestScan {
+    authority: NAMING_MD
+    serves: purpose_hierarchy.truth_over_falsehood
+    scope: scan
+    not_scope: nothing_excluded
+}
+
+fn scan(file: File) -> Integrity | Incomplete {
+    if not is_encrypted(file) {
+        return Integrity
+    }
+    if is_encrypted(file) {
+        return Incomplete {
+            reason: "encrypted container, no credentials",
+            max_confidence: 0.5,
+            partial_findings: empty_list
+        }
+    }
+}

@@ -1,0 +1,32 @@
+// Phase 2.9 fixture #1 — the minimal closed ring.
+//
+// One compound type, one function. The function declares the type as
+// its return type AND has a `return` statement. Every type declared is
+// referenced; every function with a non-empty body returns.
+// Structural completion: the ring closes.
+//
+// Expected: zero diagnostics. R1 (undefined type ref) does not fire —
+// `Document` is declared. R2 (empty body) does not fire — the module
+// has functions and a type. R3 (missing return) does not fire — the
+// function returns. R4 (unreferenced type) does not fire — `Document`
+// is referenced as the return type of `parse`.
+
+bismillah ClosedRing {
+    authority: NAMING_MD
+    serves: purpose_hierarchy.truth_over_falsehood
+    scope: parse
+    not_scope: nothing_excluded
+}
+
+type Document {
+    zahir {
+        rendered_text: String
+    }
+    batin {
+        raw_bytes: Bytes
+    }
+}
+
+fn parse() -> Document {
+    return Document
+}

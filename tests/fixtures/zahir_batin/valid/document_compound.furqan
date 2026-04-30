@@ -1,0 +1,27 @@
+// Phase 2.4 fixture #1 — literal port of Furqan thesis §3.2 Document
+// example. Tests parsing of compound type declarations: a top-level
+// `type Document { zahir { ... } batin { ... } }` block with bare-IDENT
+// field types (generics deferred to a later phase).
+//
+// Has no function definitions — pins that a module declaring only a
+// compound type and no functions parses cleanly. The zahir/batin
+// checker has nothing to verify on this fixture; it must trivially
+// pass with zero diagnostics.
+
+bismillah TypeOnly {
+    authority: NAMING_MD
+    serves: purpose_hierarchy.truth_over_falsehood
+    scope: nothing_yet
+    not_scope: nothing_excluded
+}
+
+type Document {
+    zahir {
+        rendered_text: String
+        display_format: Format
+    }
+    batin {
+        raw_bytes: Bytes
+        object_stream: Stream
+    }
+}

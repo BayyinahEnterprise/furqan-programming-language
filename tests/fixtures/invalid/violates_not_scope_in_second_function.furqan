@@ -1,0 +1,19 @@
+// The first function is clean; the second one violates the
+// not_scope. The checker must walk every function in the module —
+// not stop at the first clean function.
+
+bismillah Sloppy {
+    authority: NAMING_MD
+    serves: purpose_hierarchy.truth_over_falsehood
+    scope: orchestrate, dispatch
+    not_scope: parse_files
+}
+
+fn clean_function() {
+    orchestrate()
+    dispatch()
+}
+
+fn dirty_function() {
+    parse_files()    // SCOPE VIOLATION
+}

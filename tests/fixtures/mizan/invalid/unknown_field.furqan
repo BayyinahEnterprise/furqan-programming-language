@@ -1,0 +1,34 @@
+// Phase 2.7 fixture #7 — M3 (unknown field) — PARSER-LEVEL, not
+// checker.
+//
+// A mizan block that declares all three canonical fields PLUS an
+// unrecognised field `extra_bound`. Per Phase 2.7 §6.4, field heads
+// in mizan blocks are keyword tokens (la_tatghaw / la_tukhsiru /
+// bil_qist), so the parser enforces field-head position directly
+// — an IDENT in field-head position is a parse error, not a
+// checker case.
+//
+// Routing rationale (§6.6): putting M3 in the checker would create
+// dead code (by the time the AST is built, every field head is
+// canonical by construction). Honest layering: the parser owns
+// token-shape invariants; the checker owns semantic invariants
+// over a well-formed AST.
+//
+// Expected: PARSE ERROR with diagnosis text "unexpected token in
+// mizan field-head position; expected one of la_tatghaw,
+// la_tukhsiru, bil_qist". The fixture's test lives in the parser
+// test module (test_parser.py), NOT test_mizan.py.
+
+bismillah UnknownField {
+    authority: NAMING_MD
+    serves: purpose_hierarchy.balance_for_living_systems
+    scope: calibrate
+    not_scope: nothing_excluded
+}
+
+mizan unknown_field {
+    la_tatghaw:  false_positive_rate < 0.05
+    la_tukhsiru: detection_rate > 0.90
+    bil_qist:    calibrate(corpus, paired_fixtures)
+    extra_bound: some_value > 0.5
+}

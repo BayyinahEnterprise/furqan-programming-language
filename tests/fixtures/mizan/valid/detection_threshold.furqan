@@ -1,0 +1,30 @@
+// Phase 2.7 fixture #1 — thesis §Primitive 4 example 1, verbatim.
+//
+// THE LOAD-BEARING DEMO FIXTURE. The canonical mizan block: a
+// detector calibrating against false-positive rate (la_tatghaw —
+// the do-not-transgress upper bound), detection rate (la_tukhsiru
+// — the do-not-make-deficient lower bound), and a calibration
+// function reference (bil_qist — establish in justice).
+//
+// The shape is exactly what Bayyinah's detector calibration pattern
+// produces in production: every detector ships with three values
+// calibrated jointly because tightening the upper bound typically
+// loosens the lower bound (FRaZ non-monotonicity, Underwood et al.
+// 2020). The mizan block is the language-level transposition.
+//
+// Expected: parses cleanly, well-formedness checker returns zero
+// marads. Both thesis examples (this one and compression_ratio)
+// pin the canonical shape.
+
+bismillah CalibrationDemo {
+    authority: NAMING_MD
+    serves: purpose_hierarchy.balance_for_living_systems
+    scope: calibrate
+    not_scope: nothing_excluded
+}
+
+mizan detection_threshold {
+    la_tatghaw:  false_positive_rate < 0.05
+    la_tukhsiru: detection_rate > 0.90
+    bil_qist:    calibrate(corpus, paired_fixtures)
+}

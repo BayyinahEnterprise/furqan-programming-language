@@ -1,0 +1,32 @@
+// Phase 3.0 D15 fixture #3 - nested if inside else-body.
+//
+// Confirms that statements inside an else-body parse exactly like
+// statements inside an if-body: an inner if-statement inside the
+// else-body is a normal child statement. Pins that the recursive
+// descent in the parser does not bottom out at the else-keyword.
+
+bismillah NestedElse {
+    authority: NAMING_MD
+    serves: purpose_hierarchy.truth_over_falsehood
+    scope: scan
+    not_scope: nothing_excluded
+}
+
+fn scan() -> Integrity | Incomplete {
+    if not encrypted {
+        return Integrity
+    } else {
+        if has_partial_data {
+            return Incomplete {
+                reason: "encrypted but partial readable",
+                max_confidence: 0.4,
+                partial_findings: rendered_excerpts
+            }
+        }
+        return Incomplete {
+            reason: "encrypted, no readable data",
+            max_confidence: 0.5,
+            partial_findings: empty_list
+        }
+    }
+}

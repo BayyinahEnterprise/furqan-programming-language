@@ -1,0 +1,28 @@
+// Phase 2.9 fixture #6 — R2: empty module body (Advisory).
+//
+// A module whose body declares zero functions and zero compound
+// types. The bismillah block alone does not constitute a working
+// module — there is nothing for the other checkers to verify and
+// nothing for the build pipeline to compile. Advisory (not Marad):
+// such a module may legitimately exist as a stub during development,
+// but the developer should be informed.
+//
+// Note: a tanzil block alone does not satisfy R2's non-emptiness
+// criterion — R2 measures *body* (functions + compound types). A
+// module that declares only build-order metadata is structurally
+// indistinguishable from a stub.
+//
+// Expected: exactly one R2 advisory pointing at the bismillah span,
+// with a suggestion that names the two repair paths (add at least
+// one type or function, or remove the module).
+
+bismillah EmptyShell {
+    authority: NAMING_MD
+    serves: purpose_hierarchy.truth_over_falsehood
+    scope: nothing_yet
+    not_scope: nothing_excluded
+}
+
+tanzil empty_shell_deps {
+    depends_on: Foundation
+}

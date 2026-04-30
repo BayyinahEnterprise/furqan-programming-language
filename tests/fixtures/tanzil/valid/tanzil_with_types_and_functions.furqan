@@ -1,0 +1,28 @@
+// Phase 2.8 fixture #4 — non-interference with other primitives.
+//
+// A module that declares a tanzil block alongside a mizan block
+// and a function. Confirms that Phase 2.8 grammar composes cleanly
+// with Phase 2.4 (compound types are not used here but the
+// grammar permits), Phase 2.6 (functions), and Phase 2.7 (mizan).
+// Each primitive's checker runs independently; their AST surfaces
+// do not overlap.
+
+bismillah FullModule {
+    authority: NAMING_MD
+    serves: purpose_hierarchy.balance_for_living_systems
+    scope: everything
+    not_scope: nothing_excluded
+}
+
+tanzil full_deps {
+    depends_on: Foundation
+}
+
+mizan threshold {
+    la_tatghaw:  false_positive_rate < 0.05
+    la_tukhsiru: detection_rate > 0.90
+    bil_qist:    calibrate(corpus, paired_fixtures)
+}
+
+fn process() {
+}

@@ -1,0 +1,22 @@
+// Phase 2.8 fixture #6 — Case T2: duplicate dependency.
+//
+// The same module path appears twice in the dependency list. The
+// second declaration is either a redundant paste or an attempt to
+// declare two distinct dependencies that happen to share a name —
+// both shapes deserve a loud diagnostic. The first occurrence is
+// treated as canonical; subsequent occurrences fire the marad.
+//
+// Same first-occurrence-wins discipline as Mizan M2 and additive-
+// only's catalog-duplicate handling.
+
+bismillah Duplicated {
+    authority: NAMING_MD
+    serves: purpose_hierarchy.balance_for_living_systems
+    scope: compile
+    not_scope: nothing_excluded
+}
+
+tanzil dup_deps {
+    depends_on: CoreModule
+    depends_on: CoreModule
+}

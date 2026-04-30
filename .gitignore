@@ -1,0 +1,72 @@
+# Furqan — .gitignore
+#
+# Standard Python ignores plus packaging/cache artefacts the
+# project's own discipline (paired fixtures + test sweep) does
+# not need to track. Anything generated, anything OS-specific,
+# anything tool-specific.
+
+# ---- Python bytecode and caches ----
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+
+# ---- Distribution / packaging ----
+build/
+dist/
+*.egg-info/
+*.egg
+*.whl
+*.tar.gz
+.eggs/
+pip-wheel-metadata/
+
+# ---- Test / coverage ----
+.pytest_cache/
+.coverage
+.coverage.*
+.cache/
+htmlcov/
+.tox/
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+
+# ---- Type checkers / linters ----
+.mypy_cache/
+.dmypy.json
+.ruff_cache/
+.pyre/
+.pytype/
+
+# ---- Editors ----
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.pydevproject
+
+# ---- OS metadata ----
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---- Virtualenvs ----
+.venv/
+venv/
+env/
+ENV/
+.python-version
+
+# ---- Jupyter ----
+.ipynb_checkpoints/
+
+# ---- Project-specific ----
+# Local notes that should not ship.
+SCRATCH.md
+notes/
+*.local.md

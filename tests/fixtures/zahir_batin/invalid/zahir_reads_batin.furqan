@@ -1,0 +1,32 @@
+// Phase 2.4 fixture #4 — Case 1 violation.
+//
+// `fn display(doc: Document.zahir)` declares the parameter as
+// surface-layer-only access. The body then reads doc.batin.raw_bytes
+// — a depth-layer access. This is the canonical zahir/batin
+// divergence the language is built to make loud.
+//
+// The checker must emit a marad naming:
+//   - the function (display)
+//   - the parameter (doc) and its declared layer (zahir)
+//   - the offending access path (doc.batin.raw_bytes) and its layer (batin)
+//   - the rule violated (Case 1: zahir-typed function may only access zahir fields)
+
+bismillah Sloppy {
+    authority: NAMING_MD
+    serves: purpose_hierarchy.truth_over_falsehood
+    scope: surface_only
+    not_scope: nothing_excluded
+}
+
+type Document {
+    zahir {
+        rendered_text: String
+    }
+    batin {
+        raw_bytes: Bytes
+    }
+}
+
+fn display(doc: Document.zahir) {
+    read(doc.batin.raw_bytes)
+}

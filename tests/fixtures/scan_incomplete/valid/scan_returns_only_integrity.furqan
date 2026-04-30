@@ -1,0 +1,21 @@
+// Phase 2.6 fixture #1 — sanity case: no union return type.
+//
+// A function declared `-> Integrity` (no union) returns bare
+// Integrity. The Phase 2.6 checker rule applies ONLY to functions
+// with `-> Integrity | Incomplete` return types. This fixture
+// confirms the no-union path is unaffected by the new checker —
+// every existing pre-2.6 function that returned Integrity continues
+// to type-check identically.
+//
+// Expected: zero diagnostics.
+
+bismillah Sanity {
+    authority: NAMING_MD
+    serves: purpose_hierarchy.truth_over_falsehood
+    scope: scan
+    not_scope: nothing_excluded
+}
+
+fn scan_clean(file: File) -> Integrity {
+    return Integrity
+}

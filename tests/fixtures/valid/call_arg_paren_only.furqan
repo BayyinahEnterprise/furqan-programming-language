@@ -1,0 +1,22 @@
+// VALID — Session 1.2 c.3 patch negative-regression baseline.
+//
+// Confirms that the c.3 brace-rejection patch did NOT regress the
+// existing paren-only nesting behavior. The argument list contains
+// nested parens at depth 3 and Phase-2's existing paren-depth
+// tracking should accept it without a diagnostic.
+//
+// Per the parser docstring, only the head call (`x`) is extracted
+// as a CallRef in Phase 2; nested call-shaped tokens inside arg
+// lists are deliberately not extracted. The Bismillah scope checker
+// sees one call (`x`) and verifies it against not_scope.
+
+bismillah ParenOnly {
+    authority: NAMING_MD
+    serves: purpose_hierarchy.truth_over_falsehood
+    scope: orchestrate, dispatch
+    not_scope: parse_files
+}
+
+fn run() {
+    x((a, b), c, ((d)))
+}

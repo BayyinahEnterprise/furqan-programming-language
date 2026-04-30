@@ -1,0 +1,23 @@
+// Phase 2.8 fixture #5 — Case T1: self-dependency.
+//
+// THE LOAD-BEARING DEMO FIXTURE. The module declares a dependency
+// on itself, the smallest possible circular dependency. A multi-
+// module cycle (A depends on B, B depends on A) is the Phase 3+
+// generalization (D9); T1 catches the trivial single-module case
+// at compile time, before any cross-module graph is constructed.
+//
+// Per Furqan thesis: the order of revelation matters precisely
+// because later depends on earlier. A surah depending on itself
+// has no place in the sequence. The compiler makes the structural
+// nonsense loud.
+
+bismillah Circular {
+    authority: NAMING_MD
+    serves: purpose_hierarchy.balance_for_living_systems
+    scope: compile
+    not_scope: nothing_excluded
+}
+
+tanzil circular_deps {
+    depends_on: Circular
+}

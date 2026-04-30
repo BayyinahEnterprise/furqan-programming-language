@@ -1,0 +1,19 @@
+// PARSE-INVALID — Session 1.2 c.3 patch.
+//
+// A stray '}' inside an argument list with no matching '{'. Before
+// the c.3 patch this parsed as `x()` (the '}' was absorbed by the
+// opaque arg-list eater, which then continued until ')'). After the
+// patch the parser rejects with "Stray '}' inside call argument list".
+//
+// Drill-down case 3 from the Perplexity parser review.
+
+bismillah Sloppy {
+    authority: NAMING_MD
+    serves: purpose_hierarchy.truth_over_falsehood
+    scope: orchestrate
+    not_scope: parse_files
+}
+
+fn run() {
+    x(})
+}

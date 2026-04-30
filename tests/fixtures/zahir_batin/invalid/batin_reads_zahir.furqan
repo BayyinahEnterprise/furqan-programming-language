@@ -1,0 +1,30 @@
+// Phase 2.4 fixture #5 — Case 2 violation (the symmetric dual of #4).
+//
+// `fn extract(doc: Document.batin)` declares the parameter as
+// depth-layer-only access. The body reads doc.zahir.rendered_text —
+// a surface-layer access. The rule is symmetric to Case 1: a
+// batin-typed function reaching for zahir fields is the same
+// structural divergence in the other direction.
+//
+// The checker must emit a marad naming the rule violated as
+// Case 2 (batin-typed function may only access batin fields).
+
+bismillah Sloppy {
+    authority: NAMING_MD
+    serves: purpose_hierarchy.truth_over_falsehood
+    scope: depth_only
+    not_scope: nothing_excluded
+}
+
+type Document {
+    zahir {
+        rendered_text: String
+    }
+    batin {
+        raw_bytes: Bytes
+    }
+}
+
+fn extract(doc: Document.batin) {
+    read(doc.zahir.rendered_text)
+}

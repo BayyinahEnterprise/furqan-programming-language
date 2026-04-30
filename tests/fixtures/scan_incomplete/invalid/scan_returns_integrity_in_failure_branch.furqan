@@ -1,0 +1,37 @@
+// Phase 2.6 fixture #6 — Case A violation: Integrity in the failure
+// branch.
+//
+// A function declared `-> Integrity | Incomplete` with a guard, but
+// the guard polarity is INVERTED — the return Integrity is inside
+// `if is_encrypted(file)` (predicate held → file IS encrypted →
+// scan is incomplete) rather than `if not is_encrypted(file)`
+// (predicate ruled out → file is NOT encrypted → scan can be
+// complete).
+//
+// This is the subtler Case A failure: a developer added a guard but
+// got its sense backwards. Without a checker that distinguishes
+// `if pred` from `if not pred`, the bug silently ships. The Phase
+// 2.6 syntactic detection requires the negated form (`if not <expr>`)
+// for a path to count as ruling out incompleteness.
+//
+// Expected: one Case A marad naming the same rule as fixture #5
+// but with the path's enclosing condition cited as a non-negated
+// guard.
+
+bismillah InvertedGuard {
+    authority: NAMING_MD
+    serves: purpose_hierarchy.truth_over_falsehood
+    scope: scan
+    not_scope: nothing_excluded
+}
+
+fn scan_inverted(file: File) -> Integrity | Incomplete {
+    if is_encrypted(file) {
+        return Integrity
+    }
+    return Incomplete {
+        reason: "fallback path reached",
+        max_confidence: 0.5,
+        partial_findings: empty_list
+    }
+}

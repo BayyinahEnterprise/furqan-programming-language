@@ -1,0 +1,30 @@
+// Phase 2.6 fixture #7 — Case B violation: Incomplete missing `reason`.
+//
+// An Incomplete literal that omits the `reason` field. Per thesis §4
+// every Incomplete value must declare reason, max_confidence, and
+// partial_findings — the whole point of the Incomplete return type
+// is that it carries diagnostic content the consumer can act on.
+// An Incomplete with no `reason` is a degenerate diagnostic: it
+// signals "I could not fully process the input" but refuses to say
+// why. That is the Process-2 risk at the literal-shape level.
+//
+// Phase 2.6 enforces this as a structural marad emitted by the
+// scan-incomplete checker (Case B). The parser accepts the literal
+// with any field set; the checker fires the marad if any required
+// field is absent.
+//
+// Expected: one Case B marad naming the missing field (`reason`).
+
+bismillah MissingReason {
+    authority: NAMING_MD
+    serves: purpose_hierarchy.truth_over_falsehood
+    scope: scan
+    not_scope: nothing_excluded
+}
+
+fn scan_missing_reason(file: File) -> Integrity | Incomplete {
+    return Incomplete {
+        max_confidence: 0.5,
+        partial_findings: empty_list
+    }
+}

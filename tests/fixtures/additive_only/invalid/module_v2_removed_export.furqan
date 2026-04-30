@@ -1,0 +1,26 @@
+// Phase 2.5 fixture #5 — Case 1 violation (removed without bump).
+//
+// The v1.0 surface exported three symbols. v2.0 silently drops
+// `severity_weights` without declaring a major_version_bump catalog.
+// This is the canonical Process-2 risk in versioned-surface form:
+// every downstream consumer that called `severity_weights` would
+// break at runtime, and the language is built to make this break
+// loud at compile time.
+//
+// The checker must emit a marad naming:
+//   - the removed symbol (`severity_weights`)
+//   - the prior version (v1.0) where it existed
+//   - the rule violated (Case 1: removed without bump)
+//   - the minimal fix: add a `major_version_bump { removes: severity_weights }` catalog
+
+bismillah RegistryV2Sloppy {
+    authority: NAMING_MD
+    serves: purpose_hierarchy.truth_over_falsehood
+    scope: register
+    not_scope: nothing_excluded
+}
+
+additive_only module ScanRegistry v2.0 {
+    export mechanism_registry: Registry
+    export scan_limits: ScanLimits
+}

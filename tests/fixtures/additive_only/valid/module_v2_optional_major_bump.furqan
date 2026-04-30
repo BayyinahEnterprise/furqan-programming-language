@@ -1,0 +1,28 @@
+// Phase 2.5 fixture #3 — v2.0 with empty major_version_bump catalog.
+//
+// Identical surface change to fixture #2 (one new export added,
+// nothing removed) but the developer has chosen to declare an
+// explicit but empty `major_version_bump {}` catalog. An empty
+// catalog is benign: it asserts "I've considered breaking changes
+// and there are none." This is allowed and pinning it ensures the
+// checker doesn't treat empty catalogs as suspicious.
+//
+// Expected: pass with zero diagnostics. The empty catalog is the
+// honest declaration of "no removals, no renames, no breakage."
+
+bismillah RegistryV2Bumped {
+    authority: NAMING_MD
+    serves: purpose_hierarchy.truth_over_falsehood
+    scope: register
+    not_scope: nothing_excluded
+}
+
+additive_only module ScanRegistry v2.0 {
+    export mechanism_registry: Registry
+    export severity_weights: Weights
+    export scan_limits: ScanLimits
+    export new_thing: NewType
+
+    major_version_bump {
+    }
+}

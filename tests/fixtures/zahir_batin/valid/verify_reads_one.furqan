@@ -1,0 +1,28 @@
+// Phase 2.4 fixture #3 — verify may read only one layer and still be
+// valid.
+//
+// A verify function with an unqualified-compound-type parameter may
+// access either layer or both. The thesis permits cross-layer access;
+// it does not require it. A verify implementation that only reads
+// the surface (e.g., to lift a quick sanity check before the full
+// comparison) is structurally honest.
+
+bismillah VerifyOne {
+    authority: NAMING_MD
+    serves: purpose_hierarchy.truth_over_falsehood
+    scope: surface_only_check
+    not_scope: nothing_excluded
+}
+
+type Document {
+    zahir {
+        rendered_text: String
+    }
+    batin {
+        raw_bytes: Bytes
+    }
+}
+
+fn verify(doc: Document) {
+    check(doc.zahir.rendered_text)
+}

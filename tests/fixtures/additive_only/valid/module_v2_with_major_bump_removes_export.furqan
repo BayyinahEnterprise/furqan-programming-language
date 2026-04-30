@@ -1,0 +1,30 @@
+// Phase 2.5 fixture #4 — v2.0 with HONEST removal via major_version_bump.
+//
+// The developer wants to remove `severity_weights` from the public
+// surface. The additive-only invariant forbids silent removal, but
+// the major_version_bump catalog is the explicit escape valve: a
+// developer who declares `removes: severity_weights` is making the
+// breaking change visible to every downstream consumer.
+//
+// Critically, the symbol must ACTUALLY be absent from current.exports
+// — declaring removal of a symbol that is still present is the
+// reflexivity test (Case 4, see invalid/module_v2_catalog_dishonest).
+// This fixture is the honest counterpart: the catalog matches reality.
+//
+// Expected: pass with zero diagnostics.
+
+bismillah RegistryV2HonestBump {
+    authority: NAMING_MD
+    serves: purpose_hierarchy.truth_over_falsehood
+    scope: register
+    not_scope: nothing_excluded
+}
+
+additive_only module ScanRegistry v2.0 {
+    export mechanism_registry: Registry
+    export scan_limits: ScanLimits
+
+    major_version_bump {
+        removes: severity_weights
+    }
+}

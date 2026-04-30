@@ -1,0 +1,42 @@
+// KNOWN LIMITATION — Phase-2 head-only resolution.
+//
+// This fixture passes the Phase-2 Bismillah scope checker by design.
+// The module's not_scope excludes 'parse_files'; the function below
+// invokes 'local_alias()'. The Phase-2 checker compares only the head
+// identifier of each call path — 'local_alias' — against the
+// not_scope set, and 'local_alias' is not listed.
+//
+// In a hypothetical Phase-2 source with assignments (which this
+// surface does not yet support), an attacker could rebind:
+//
+//     local_alias = parse_files
+//     local_alias()    // would silently bypass not_scope
+//
+// Catching this requires Phase-3 namespace-aware name resolution:
+// the checker would need to track local-binding shadowing and
+// resolve every call's true target before comparing against
+// not_scope.
+//
+// This fixture exists to convert that docstring caveat into an
+// executable test (Perplexity review item #3, Session 1.1 polish):
+// the test ``test_known_limitation_passes_by_design`` asserts that
+// the Phase-2 checker accepts this file. If a future Phase-3
+// implementation closes the gap, that test will start failing — at
+// which point the fixture moves from ``known_limitation/`` to
+// ``invalid/`` and the test inverts. The framework's discipline is
+// to make limitations auditable; pinning the gap with a fixture is
+// the cleanest way.
+
+bismillah Sloppy {
+    authority: NAMING_MD
+    serves: purpose_hierarchy.truth_over_falsehood
+    scope: orchestrate
+    not_scope: parse_files
+}
+
+fn run() {
+    // 'local_alias' is not in not_scope — the head check passes.
+    // In a Phase-3 namespace-aware checker, this would require
+    // resolving local_alias's binding to detect the evasion.
+    local_alias()
+}

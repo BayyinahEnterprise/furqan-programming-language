@@ -1,0 +1,27 @@
+// Phase 2.6 fixture #8 — Case B violation: Incomplete missing
+// `max_confidence`.
+//
+// The symmetric dual of fixture #7. An Incomplete literal that
+// declares `reason` and `partial_findings` but omits
+// `max_confidence`. Without `max_confidence`, downstream consumers
+// cannot enforce the Bayyinah-style clamp (a scan_incomplete=True
+// document must be capped at SCAN_INCOMPLETE_CLAMP = 0.5); the
+// incompleteness signal is structurally present but quantitatively
+// vacuous.
+//
+// Expected: one Case B marad naming the missing field
+// (`max_confidence`).
+
+bismillah MissingMaxConfidence {
+    authority: NAMING_MD
+    serves: purpose_hierarchy.truth_over_falsehood
+    scope: scan
+    not_scope: nothing_excluded
+}
+
+fn scan_missing_max(file: File) -> Integrity | Incomplete {
+    return Incomplete {
+        reason: "scan halted",
+        partial_findings: empty_list
+    }
+}

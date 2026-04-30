@@ -1,0 +1,33 @@
+// Phase 3.0 D15 fixture #4 (invalid) - bare Integrity in else-body
+// without ruling out incompleteness.
+//
+// The if-condition is `encrypted` (NON-negated). The if-body executes
+// when encrypted is true and produces an Incomplete (correct). The
+// ELSE-body executes when encrypted is false - incompleteness has
+// effectively been ruled out, so bare Integrity in the else IS honest.
+//
+// Wait, that would be valid. Let's invert it: the if-condition is
+// `not encrypted` (negated). The if-body returns Integrity (correct
+// under Case A: incompleteness is ruled out). The ELSE-body runs
+// when encrypted is true - incompleteness is NOT ruled out, but the
+// else-body returns bare Integrity. The polarity-flip in the
+// scan-incomplete walker must catch this as a Case A marad.
+//
+// Expected: scan-incomplete fires Case A on the else-body's
+// `return Integrity`. This is the test that the else-body descent
+// flips the guard polarity correctly.
+
+bismillah ElseDishonest {
+    authority: NAMING_MD
+    serves: purpose_hierarchy.truth_over_falsehood
+    scope: scan
+    not_scope: nothing_excluded
+}
+
+fn scan() -> Integrity | Incomplete {
+    if not encrypted {
+        return Integrity
+    } else {
+        return Integrity
+    }
+}

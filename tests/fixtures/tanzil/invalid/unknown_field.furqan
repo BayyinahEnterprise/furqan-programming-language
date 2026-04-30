@@ -1,0 +1,26 @@
+// Phase 2.8 fixture #8 — parser-layer enforcement (NOT a checker case).
+//
+// A tanzil block whose field-head position contains an identifier
+// rather than the canonical `depends_on` keyword. Per Phase 2.8
+// (same routing discipline as Mizan §6.4 / M3), tanzil field
+// heads are keyword tokens; an unknown token here is a parse
+// error, not a checker case. By the time a TanzilDecl reaches
+// the checker, every entry is canonical by construction.
+//
+// Honest layering: the parser owns token-shape invariants; the
+// checker owns semantic invariants over a well-formed AST.
+//
+// Expected: PARSE ERROR with diagnosis "unexpected token in
+// tanzil dependency position; expected 'depends_on'". Test lives
+// in test_parser.py, not test_tanzil.py.
+
+bismillah BadField {
+    authority: NAMING_MD
+    serves: purpose_hierarchy.balance_for_living_systems
+    scope: compile
+    not_scope: nothing_excluded
+}
+
+tanzil bad_deps {
+    requires: CoreModule
+}

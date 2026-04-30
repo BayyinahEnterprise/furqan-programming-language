@@ -1,0 +1,25 @@
+// Phase 2.6 fixture #3 — conservative case: always-incomplete.
+//
+// A function declared `-> Integrity | Incomplete` whose only return
+// path produces Incomplete. There is no `return Integrity` to
+// validate, so the Case A producer-side check has nothing to fire
+// on. The function is structurally honest at the trivial extreme:
+// "I cannot guarantee Integrity for any input, so I always return
+// Incomplete with the reason."
+//
+// Expected: zero diagnostics.
+
+bismillah AlwaysIncomplete {
+    authority: NAMING_MD
+    serves: purpose_hierarchy.truth_over_falsehood
+    scope: scan
+    not_scope: nothing_excluded
+}
+
+fn scan_uncertain(file: File) -> Integrity | Incomplete {
+    return Incomplete {
+        reason: "scanner unavailable in this build",
+        max_confidence: 0.0,
+        partial_findings: empty_list
+    }
+}

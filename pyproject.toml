@@ -1,0 +1,59 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "furqan"
+version = "0.7.1"
+description = "A programming language type-checker enforcing structural honesty (Phase 2 prototype)."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Apache-2.0" }
+authors = [
+    { name = "Fraz Ashraf" },
+    { name = "Bilal Syed Arfeen" },
+]
+keywords = ["programming-language", "type-checker", "structural-honesty", "furqan"]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Compilers",
+]
+
+# MDL: zero runtime dependencies. The Phase 2 type-checker is
+# Python-stdlib-only by design — every dependency is a future surface for
+# breaking changes that the additive-only invariant must defend against.
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/BayyinahEnterprise/furqan"
+
+# ---------------------------------------------------------------------------
+# Package layout
+# ---------------------------------------------------------------------------
+# Phase 2 ships a single import root, ``furqan``, mapped onto src/. The
+# top-level src/ directory contains parser/, checker/, types/, errors/ —
+# each a phase of the static-verification pipeline (parse → typecheck →
+# diagnose). Tests live outside the import root so they cannot leak into
+# the public surface.
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["furqan*"]
+namespaces = false
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = ["-q", "--strict-markers"]

@@ -1,0 +1,16 @@
+// Identical to scan_service.furqan in shape, but using the English
+// alias 'scope_block' instead of the canonical 'bismillah'. Per
+// NAMING.md §1 the parser and checker treat both identically. This
+// fixture pins that equivalence.
+
+scope_block ScanServiceAlias {
+    authority: NAMING_MD
+    serves: purpose_hierarchy.truth_over_falsehood
+    scope: orchestrate, dispatch
+    not_scope: parse_files, render_output
+}
+
+fn run() {
+    orchestrate()
+    dispatch()
+}

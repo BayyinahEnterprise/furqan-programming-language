@@ -1,0 +1,36 @@
+// Phase 2.9 fixture #7 — R3: missing return statement (Marad).
+//
+// A function declares `-> Document` but its body contains no
+// `return` statement. The function promises a Document but the
+// control-flow has no path that produces one. The ring is broken at
+// the function level: declared output without a producing path.
+//
+// Phase 2.9 detection is *syntactic*: the checker walks the
+// function's statements (recursing into IfStmt bodies) and asserts
+// that at least one ReturnStmt is reachable. All-paths-return
+// analysis is registered as D24 — a function with `if` arms that
+// each return but no else-branch will currently NOT fire R3 (the
+// presence of any return statement satisfies the syntactic gate).
+//
+// Expected: exactly one R3 marad pointing at the function's name
+// span. Diagnosis names the missing return; minimal_fix names the
+// repair (add `return <Type>` or remove the return type).
+
+bismillah MissingReturn {
+    authority: NAMING_MD
+    serves: purpose_hierarchy.truth_over_falsehood
+    scope: ingest
+    not_scope: nothing_excluded
+}
+
+type Document {
+    zahir {
+        rendered_text: String
+    }
+    batin {
+        raw_bytes: Bytes
+    }
+}
+
+fn ingest() -> Document {
+}

@@ -1,0 +1,26 @@
+// Phase 2.7 fixture #6 — Case M2: duplicate field.
+//
+// A mizan block that declares la_tatghaw twice. The second
+// declaration silently overrides the first under any "last write
+// wins" parsing convention; the checker's job is to make the
+// duplication loud rather than letting one of the two bound
+// declarations disappear.
+//
+// Expected: one M2 marad naming the duplicate field
+// (`la_tatghaw`) and the line of the second occurrence. The first
+// occurrence is treated as "the canonical value"; the second is
+// the offending duplicate.
+
+bismillah DoubleUpper {
+    authority: NAMING_MD
+    serves: purpose_hierarchy.balance_for_living_systems
+    scope: calibrate
+    not_scope: nothing_excluded
+}
+
+mizan double_upper {
+    la_tatghaw:  false_positive_rate < 0.05
+    la_tatghaw:  false_positive_rate < 0.10
+    la_tukhsiru: detection_rate > 0.90
+    bil_qist:    calibrate(corpus, paired_fixtures)
+}

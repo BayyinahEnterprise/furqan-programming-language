@@ -1,0 +1,16 @@
+// Phase 2.8 fixture #3 — pre-2.8 baseline.
+//
+// A module with no tanzil block at all. The Phase 2.8 checker has
+// nothing to fire on. Pins that the checker is non-invasive on
+// pre-2.8 surfaces — every existing module that did not declare
+// build dependencies continues to type-check identically.
+
+bismillah Standalone {
+    authority: NAMING_MD
+    serves: purpose_hierarchy.balance_for_living_systems
+    scope: standalone
+    not_scope: nothing_excluded
+}
+
+fn run() {
+}

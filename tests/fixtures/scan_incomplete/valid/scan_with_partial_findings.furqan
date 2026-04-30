@@ -1,0 +1,28 @@
+// Phase 2.6 fixture #4 — partial_findings field carries real content.
+//
+// An Incomplete literal whose `partial_findings` field references
+// multiple identifiers (Phase 2.6 grammar models the partial-findings
+// list as a comma-separated identifier list, reusing the
+// _parse_ident_list machinery). This pins that the field carries
+// non-trivial content — a downstream consumer reading the Incomplete
+// signal can see what WAS found, not only that the scan was
+// incomplete.
+//
+// Expected: zero diagnostics. The Case B (literal-shape) check sees
+// all three required fields and the Case A check has no Integrity
+// returns to inspect.
+
+bismillah PartialFindings {
+    authority: NAMING_MD
+    serves: purpose_hierarchy.truth_over_falsehood
+    scope: scan
+    not_scope: nothing_excluded
+}
+
+fn scan_partial(file: File) -> Integrity | Incomplete {
+    return Incomplete {
+        reason: "scan halted mid-pipeline",
+        max_confidence: 0.3,
+        partial_findings: finding_zero_width, finding_invisible_render, finding_white_on_white
+    }
+}

@@ -1,0 +1,23 @@
+// Phase 2.7 fixture #2 — thesis §Primitive 4 example 2, verbatim.
+//
+// A second canonical mizan block, this one for compression-ratio
+// calibration. Confirms the grammar handles both pinned thesis
+// examples — i.e., the shape is general, not over-fit to the
+// detection-threshold case. The bil_qist field references the
+// FRaZ framework directly (Underwood et al. 2020), the empirical
+// anchor for the three-valued shape.
+//
+// Expected: parses cleanly, zero marads.
+
+bismillah CompressionDemo {
+    authority: NAMING_MD
+    serves: purpose_hierarchy.balance_for_living_systems
+    scope: compress
+    not_scope: nothing_excluded
+}
+
+mizan compression_ratio {
+    la_tatghaw:  quality_loss < epsilon
+    la_tukhsiru: ratio > target
+    bil_qist:    optimize(error_bound, FRaZ)
+}

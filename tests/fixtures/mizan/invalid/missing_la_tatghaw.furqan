@@ -1,0 +1,26 @@
+// Phase 2.7 fixture #5 — Case M1: missing required field.
+//
+// A mizan block that declares la_tukhsiru and bil_qist but omits
+// la_tatghaw — the upper bound, the do-not-transgress command. The
+// thesis paper §Primitive 4 anchors on Ar-Rahman 55:7-9, which
+// names all three commands together; declaring two of three is
+// the canonical Process-2 risk for this primitive (the developer
+// thinks they have the discipline because the block syntactically
+// exists, but one of the three balance-points is silently
+// missing).
+//
+// Expected: one M1 marad naming the missing field (`la_tatghaw`).
+// Per the brief, M1 fires once per missing field; this fixture
+// has exactly one missing field so exactly one marad.
+
+bismillah PartialBalance {
+    authority: NAMING_MD
+    serves: purpose_hierarchy.balance_for_living_systems
+    scope: calibrate
+    not_scope: nothing_excluded
+}
+
+mizan partial_balance {
+    la_tukhsiru: detection_rate > 0.90
+    bil_qist:    calibrate(corpus, paired_fixtures)
+}

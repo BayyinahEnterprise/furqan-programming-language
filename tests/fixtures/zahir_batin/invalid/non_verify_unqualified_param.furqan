@@ -1,0 +1,34 @@
+// Phase 2.4 fixture #6 — Case 3 violation.
+//
+// `fn display(doc: Document)` takes the unqualified compound type
+// Document. Phase 2.4 permits unqualified compound-type parameters
+// ONLY for functions named verify (the cross-layer construct). A
+// display function (or any non-verify function) declaring an
+// unqualified Document parameter is a Case 3 marad — the parameter
+// declaration itself is the violation, not the body access.
+//
+// The body's doc.zahir.x access is structurally a single-layer
+// access, but the marad fires on the parameter declaration before
+// body analysis begins. A future Phase-3 multi-error reporter may
+// surface both diagnostics; Phase 2 is fail-soft and emits the
+// parameter-level marad first.
+
+bismillah Sloppy {
+    authority: NAMING_MD
+    serves: purpose_hierarchy.truth_over_falsehood
+    scope: surface_access
+    not_scope: nothing_excluded
+}
+
+type Document {
+    zahir {
+        rendered_text: String
+    }
+    batin {
+        raw_bytes: Bytes
+    }
+}
+
+fn display(doc: Document) {
+    read(doc.zahir.x)
+}
