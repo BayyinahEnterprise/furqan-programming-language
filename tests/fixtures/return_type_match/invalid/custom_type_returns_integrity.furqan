@@ -1,0 +1,29 @@
+// D22 fixture #6 (invalid) - custom type declared, language
+// primitive returned.
+//
+// The function declares -> DocumentReport (a domain type) but
+// returns IntegrityLiteral. Inferred type "Integrity" is not a
+// member of {"DocumentReport"}; M1 fires.
+//
+// Expected: exactly one M1 marad. The diagnosis names "Integrity"
+// as inferred, "DocumentReport" as accepted.
+
+bismillah TypeClash {
+    authority: NAMING_MD
+    serves: purpose_hierarchy.balance_for_living_systems
+    scope: report
+    not_scope: nothing_excluded
+}
+
+type DocumentReport {
+    zahir {
+        summary: String
+    }
+    batin {
+        raw_bytes: Bytes
+    }
+}
+
+fn generate() -> DocumentReport {
+    return Integrity
+}

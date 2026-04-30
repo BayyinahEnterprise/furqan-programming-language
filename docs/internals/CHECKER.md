@@ -6,20 +6,25 @@ session-by-session.
 
 ---
 
-## 1. Public surface (Phase 2.9 complete)
+## 1. Public surface (v0.8.2; seven-primitive ring + D11 + D22 + D24 extensions)
 
 The `furqan.checker` package exports one entry-point family per
-primitive. As of Phase 2.9 the seven-primitive ring is closed:
+primitive. As of Phase 2.9 the seven-primitive ring is closed;
+v0.8.0 added D11 status-coverage; v0.8.1 added D22 return-type
+matching; v0.8.2 adds D24 all-paths-return analysis:
 
-| Primitive              | Module                     | Entry points                                                                |
-|------------------------|----------------------------|-----------------------------------------------------------------------------|
-| Bismillah scope        | `checker/bismillah.py`     | `check_bismillah` / `check_bismillah_strict`                                |
-| Zahir/batin            | `checker/zahir_batin.py`   | `check_zahir_batin` / `check_zahir_batin_strict`                            |
-| Additive-only          | `checker/additive.py`      | `check_additive` / `check_additive_module` / `check_additive_module_strict` |
-| Scan-incomplete        | `checker/incomplete.py`    | `check_incomplete` / `check_incomplete_strict`                              |
-| Mizan calibration      | `checker/mizan.py`         | `check_mizan` / `check_mizan_strict`                                        |
-| Tanzil build ordering  | `checker/tanzil.py`        | `check_tanzil` / `check_tanzil_strict`                                      |
-| Ring-close completion  | `checker/ring_close.py`    | `check_ring_close` / `check_ring_close_strict`                              |
+| Primitive               | Module                         | Entry points                                                                |
+|-------------------------|--------------------------------|-----------------------------------------------------------------------------|
+| Bismillah scope         | `checker/bismillah.py`         | `check_bismillah` / `check_bismillah_strict`                                |
+| Zahir/batin             | `checker/zahir_batin.py`       | `check_zahir_batin` / `check_zahir_batin_strict`                            |
+| Additive-only           | `checker/additive.py`          | `check_additive` / `check_additive_module` / `check_additive_module_strict` |
+| Scan-incomplete         | `checker/incomplete.py`        | `check_incomplete` / `check_incomplete_strict`                              |
+| Mizan calibration       | `checker/mizan.py`             | `check_mizan` / `check_mizan_strict`                                        |
+| Tanzil build ordering   | `checker/tanzil.py`            | `check_tanzil` / `check_tanzil_strict`                                      |
+| Ring-close completion   | `checker/ring_close.py`        | `check_ring_close` / `check_ring_close_strict`                              |
+| Status-coverage (D11)   | `checker/status_coverage.py`   | `check_status_coverage` / `check_status_coverage_strict`                    |
+| Return-type match (D22) | `checker/return_type_match.py` | `check_return_type_match` / `check_return_type_match_strict`                |
+| All-paths-return (D24)  | `checker/all_paths_return.py`  | `check_all_paths_return` / `check_all_paths_return_strict`                  |
 
 Each primitive has a fail-soft variant (returns a list of marads, or
 a `Result` bundle for additive-only) and a fail-fast `*_strict`
@@ -54,7 +59,7 @@ reporter can render them differently:
 
 ---
 
-## 3. Additive-only checker (Phase 2.5): the four cases
+## 3. Additive-only checker (Phase 2.5), the four cases
 
 ### Case 1, Removed without bump
 
@@ -68,7 +73,8 @@ The single conceptual rule "renames must be declared" is implemented
 as two separate checks:
 
 **Enforcement (marad fires).** The catalog declares
-`renames: X -> Y`, but the catalog claim contradicts reality, either `X` is still in `current.exports` OR `Y` is absent from
+`renames: X -> Y`, but the catalog claim contradicts reality,
+either `X` is still in `current.exports` OR `Y` is absent from
 `current.exports`. The catalog must not lie.
 
 **Detection (advisory fires, marad does not).** The surface change
@@ -188,7 +194,7 @@ removals or renames that happened in v1.1 or v1.2.
 
 ---
 
-## 9. Status-coverage checker (D11, v0.8.0), the consumer-side dual
+## 9. Status-coverage checker (D11, v0.8.0) - the consumer-side dual
 
 The Phase 2.6 scan-incomplete checker is the producer-side primitive
 of structural-honesty for incompleteness: a function declaring
@@ -203,27 +209,27 @@ boundary (D11 Cases S1, S2).
 
 ### The three cases
 
-* **S1, status collapse (Marad).** Caller's declared return type is
+* **S1 - Status collapse (Marad).** Caller's declared return type is
   not exactly `Integrity | Incomplete` despite calling a function
   whose return type IS that union. The caller has narrowed away the
   possibility of incompleteness; the caller's signature now lies
   about what the caller actually does. One Marad per offending call
   site (per-occurrence discipline matches Tanzil T1 self-dependency
   firing).
-* **S2, status discard (Advisory).** Caller has no declared return
+* **S2 - Status discard (Advisory).** Caller has no declared return
   type despite calling a producer. The producer's result is
   silently dropped. Advisory rather than Marad: the function may be
   intentionally effectful (a logger, a side-effect-only
   orchestrator). The diagnostic alerts the developer; the strict-
   variant gate does not fire on it.
-* **S3, honest propagation (no diagnostic).** Caller is itself a
+* **S3 - Honest propagation (no diagnostic).** Caller is itself a
   producer. Union preserved end-to-end. Trivial pass.
 
 ### Local-scope only
 
 The producer map is built from `module.functions` exclusively. A
 call to a function defined in another module cannot be resolved
-here, the same local-scope limitation as ring-close R1 and Phase
+here - the same local-scope limitation as ring-close R1 and Phase
 2.6 Case A's producer detection. Cross-module producer resolution
 is registered as D23 alongside the cross-module ring analysis.
 
@@ -245,10 +251,163 @@ primitive count without adding a new structural rule.
   inspects both arms of the union via if/else branching is not
   checked. Branch-level match checking requires control-flow
   analysis (D13) and pattern matching (future grammar).
-* **Transitive collapse (D25).** A to B to C where C is a producer:
+* **Transitive collapse (D25).** A -> B -> C where C is a producer:
   D11 checks B's call to C and A's call to B independently. It
   does not verify the full chain preserves the union. Phase 3+
   work.
 * **Effect tracking.** A future Phase-3 effect-system primitive
   may upgrade S2 from Advisory to Marad when the caller is purely
   functional (no side effects). For now, S2 stays informational.
+
+---
+
+## 10. Return-expression type matching (D22, v0.8.1)
+
+The third leg of the return-type contract. Ring-close R3 (Phase 2.9)
+verifies that a function with a declared return type contains at
+least one return statement (presence). D11 status-coverage (v0.8.0)
+verifies that callers of producers honestly propagate the union
+(consumer-side exhaustiveness). D22 (this section) verifies that the
+return statement's expression matches the declared return type
+(producer-side type correctness on the value being returned).
+
+### The single case
+
+* **M1 - Return type mismatch (Marad).** A return expression's
+  *statically-inferred* type is not a member of the declared return
+  type's accepted set. Examples: function declares `-> Integrity`,
+  body returns `Incomplete {...}`; function declares `-> CustomType`,
+  body returns `Integrity`.
+
+### Shallow inference is honest
+
+Only `IntegrityLiteral` and `IncompleteLiteral` have statically-known
+types in the AST. Every other expression (`IdentExpr`, `StringLiteral`,
+`NumberLiteral`, `NotExpr`, `BinaryComparisonExpr`, `IdentList`) is
+*uncheckable* and produces no diagnostic. This is the honest position:
+the checker does not claim a verdict it cannot prove.
+
+An M2-style "uncheckable expression" Advisory was considered and
+deliberately omitted. It would fire on nearly every function that
+returns a variable (`return result`), drowning the M1 signal in
+noise. The trade-off favours signal density over warning coverage.
+
+### Why this is not folded into ring-close
+
+R1-R4 are about structural completion at the *module shape* level
+(undefined types, empty body, missing return, unreferenced type).
+D22 is about *value-level type matching*. Folding D22 into ring-close
+would conflate two distinct invariants: structural presence and type
+correctness. Keeping them separate matches the same architectural
+choice that put D11 in its own module rather than extending
+scan-incomplete's body.
+
+### What this checker does NOT do
+
+* **D27 - Type inference on `IdentExpr` returns.** `return result` -
+  determining the type of `result` requires data-flow analysis
+  (tracing assignments and call return types). Phase 3+ work.
+* **D28 - Cross-function return-type resolution.**
+  `return scan(file)` - what does `scan` return? Requires call-graph
+  return-type propagation. Phase 3+ work; overlaps with the
+  cross-module graph that D9/D20/D23 share.
+* **Boolean inference.** `return not x` - the result is boolean, but
+  Furqan has no boolean type in the type system yet. Future work.
+
+### The three-leg return-type contract
+
+Together, R3 / D22 / D11 form a complete return-type discipline
+across function boundaries:
+
+* **R3** - the function MUST return (structural presence).
+* **D22** - the function MUST return the right TYPE (value-level
+  correctness).
+* **D11** - the function's CALLERS must propagate the type
+  honestly (consumer-side exhaustiveness).
+
+The compiler now does not let you lie about what you return at any
+of the three levels: presence, type, or propagation.
+
+---
+
+## 11. All-paths-return analysis (D24, v0.8.2)
+
+The fourth leg of the return-type contract. Ring-close R3 (Phase
+2.9) checks that a return statement EXISTS somewhere in a typed
+function's body. D24 checks that EVERY control-flow path through
+the body reaches a return statement.
+
+R3 catches the total absence ("you have no return at all"). D24
+catches the partial absence ("you have a return on some paths but
+not all"). The two compose: a function that fails R3 does not need
+D24; a function that passes R3 but fails D24 has a silent fall-
+through. The `_any_return_exists` short-circuit in D24 ensures no
+double-reporting.
+
+### The single case
+
+* **P1 - Missing return path (Marad).** A function declares a
+  return type, has at least one return statement (passes R3), but
+  some control-flow path falls through without reaching a return.
+  Common shapes: an `if` whose body returns but with no `else` and
+  no trailing return; an `if`/`else` where one branch returns and
+  the other runs only side-effect calls.
+
+### The recurrence
+
+A statement sequence all-paths-returns iff:
+1. It contains a top-level `ReturnStmt`, OR
+2. It contains an `IfStmt` with a non-empty `else_body` where BOTH
+   the if-body and the else-body all-paths-return.
+
+An `IfStmt` without an else cannot satisfy the gate on its own -
+the missing-else path is an implicit fall-through. But a sequence
+containing an else-less `IfStmt` followed by a bare return DOES
+satisfy the gate, because the walker continues past the `IfStmt`
+and finds the trailing return on the next iteration. This
+preserves the canonical "early-return then default" pattern.
+
+### Exact, not approximate
+
+The analysis is exact for the current grammar. Furqan has exactly
+one branching construct (`IfStmt` with optional else-arm, after
+D15). There are no loops, no `switch`/`match`, no exceptions, no
+early-exits other than `return`. Under these constraints,
+structural recursion gives an exact verdict. When future grammar
+adds loops or match expressions, D24 needs extension; that is
+D29, registered as Phase 3+ work.
+
+### Why this is not folded into ring-close
+
+R3 (presence) is a first-order check: does any return exist?
+D24 (path coverage) is a second-order check: do all paths reach
+one? Folding D24 into ring-close would conflate two distinct
+invariants. Keeping them separate matches the architectural
+choice that put D11 in its own module rather than extending
+scan-incomplete, and D22 in its own module rather than extending
+ring-close.
+
+### What this checker does NOT do
+
+* **D29 - Full CFG analysis.** Loops, `switch`/`match`, exception
+  paths require a control-flow graph rather than structural
+  recursion. Phase 3+ work.
+* **Unreachable-code detection.** A return statement followed by
+  more statements is not flagged. Separate Phase 3 tooling.
+* **Branch-level union exhaustiveness.** Whether each arm of a
+  union return type is produced by some path is D26.
+
+### The four-leg return-type contract
+
+After D24, the return-type discipline has four legs:
+
+| Leg | Checker | Question |
+|---|---|---|
+| Presence | Ring-close R3 | "Did you return at all?" |
+| Path coverage | D24 all-paths-return | "Did every path return?" |
+| Type correctness | D22 return-type-match | "Did you return the right thing?" |
+| Consumer propagation | D11 status-coverage | "Do your callers preserve your type?" |
+
+The compiler enforces return-type honesty from every angle: you
+must return, on every path, with the right type, and your callers
+must not hide it.

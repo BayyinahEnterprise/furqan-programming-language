@@ -48,6 +48,16 @@ from .status_coverage import (
     check_status_coverage,
     check_status_coverage_strict,
 )
+from .return_type_match import (
+    PRIMITIVE_NAME as RETURN_TYPE_MATCH_PRIMITIVE_NAME,
+    check_return_type_match,
+    check_return_type_match_strict,
+)
+from .all_paths_return import (
+    PRIMITIVE_NAME as ALL_PATHS_RETURN_PRIMITIVE_NAME,
+    check_all_paths_return,
+    check_all_paths_return_strict,
+)
 
 __all__ = [
     # Bismillah scope (Phase 2.3)
@@ -90,4 +100,12 @@ __all__ = [
     "STATUS_COVERAGE_PRIMITIVE_NAME",
     "check_status_coverage",
     "check_status_coverage_strict",
+    # Return-expression type matching (D22, v0.8.1)
+    "RETURN_TYPE_MATCH_PRIMITIVE_NAME",
+    "check_return_type_match",
+    "check_return_type_match_strict",
+    # All-paths-return analysis (D24, v0.8.2)
+    "ALL_PATHS_RETURN_PRIMITIVE_NAME",
+    "check_all_paths_return",
+    "check_all_paths_return_strict",
 ]

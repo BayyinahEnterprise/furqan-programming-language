@@ -1,0 +1,25 @@
+// D22 fixture #5 (invalid) - canonical M1: Integrity declared,
+// Incomplete returned.
+//
+// The signature promises -> Integrity (clean result every time).
+// The body returns IncompleteLiteral. Inferred type "Incomplete"
+// is not a member of the accepted set {"Integrity"}; M1 fires.
+//
+// Expected: exactly one M1 marad pointing at the return statement.
+// The diagnosis names "Incomplete" as inferred, "Integrity" as
+// accepted, and the contradiction.
+
+bismillah WrongReturn {
+    authority: NAMING_MD
+    serves: purpose_hierarchy.balance_for_living_systems
+    scope: scan
+    not_scope: nothing_excluded
+}
+
+fn scan() -> Integrity {
+    return Incomplete {
+        reason: "should not be here",
+        max_confidence: 0.5,
+        partial_findings: empty_list
+    }
+}

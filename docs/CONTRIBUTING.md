@@ -22,12 +22,12 @@ When conventions conflict, resolve in this order:
 
 Every PR opens with one of three labels in the description:
 
-* **COMPLIANT**: the change follows all conventions and preserves
+* **COMPLIANT**, the change follows all conventions and preserves
   every existing test.
-* **PARTIAL**: the change follows conventions but adds new public
+* **PARTIAL**, the change follows conventions but adds new public
   surface (a new module, AST node, or exported function). The PR
   description names the addition explicitly.
-* **BLOCKED**: the change would violate primitive semantics or
+* **BLOCKED**, the change would violate primitive semantics or
   naming conventions and should not be merged. PRs labeled BLOCKED
   exist to record the design conversation, not to be merged.
 
@@ -82,7 +82,7 @@ runtime dependencies require:
 
 * a one-paragraph justification in the PR description naming the
   specific failure that the dependency closes,
-* an explicit upper version bound (`<2`, `<7`, etc.): the
+* an explicit upper version bound (`<2`, `<7`, etc.), the
   additive-only invariant extends to upstream parsers (the Bayyinah
   v1.1.1 lesson),
 * approval from the lead author.
@@ -100,8 +100,8 @@ ambitious refactors; the skip rule is its structural defence.
 
 ## 8. The Polish Patch Protocol
 
-Two sessions of empirical evidence (1.1 and 1.4.1): and the
-present registration (1.4.2): establish a named discipline for
+Two sessions of empirical evidence (1.1 and 1.4.1), and the
+present registration (1.4.2), establish a named discipline for
 absorbing small structural findings without disrupting the primitive-
 shipping cadence. The protocol is documented here so future
 contributors apply the same shape and so the discipline does not
@@ -154,7 +154,8 @@ that surfaced it. Its structural shape:
   rather than left unrecorded.
 - **Audit re-run before next primitive opens.** After the patch
   ships, the verifier re-runs the same probe set that surfaced the
-  finding. The next primitive opens against a zero-finding baseline, the audit streak is a first-class discipline.
+  finding. The next primitive opens against a zero-finding baseline
+ , the audit streak is a first-class discipline.
 - **Compliance state at handoff is COMPLIANT.** A polish patch
   that introduces any non-additive behavior is not a polish patch;
   see §9.5.
@@ -254,9 +255,6 @@ the framework eating its own dogfood, and is the kind of structural
 honesty the language is built to make habitual.
 
 ## 9. Closing
-
-*Wa qul rabbi zidni 'ilma.*, *And say: my Lord, increase me in
-knowledge.* (20:114)
 
 The protocol is a tool, not a wall. When it gets in the way of
 shipping honest code, the protocol is the thing to revise, but the

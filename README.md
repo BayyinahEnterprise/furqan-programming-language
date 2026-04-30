@@ -1,6 +1,6 @@
 # Furqan
 
-[![CI](https://github.com/BayyinahEnterprise/Furqan---Honest-Programming-Langage/actions/workflows/ci.yml/badge.svg)](https://github.com/BayyinahEnterprise/Furqan---Honest-Programming-Langage/actions/workflows/ci.yml)
+[![CI](https://github.com/BayyinahEnterprise/furqan/actions/workflows/ci.yml/badge.svg)](https://github.com/BayyinahEnterprise/furqan/actions/workflows/ci.yml)
 
 A programming-language type-checker that enforces structural honesty
 at compile time. Furqan rejects code shapes that promise more than
@@ -10,14 +10,14 @@ the program can actually deliver, before the program ever runs.
 
 A standalone Python type-checker that verifies a minimal subset of
 the Furqan surface syntax against the paper's structural-honesty
-primitives. Phase 2 (this repository) is the prototype type-checker.
-It is not a full compiler, not a runtime, not an LLM. It demonstrates
+primitives. Phase 2 (this repository) is the prototype type-checker
+, not a full compiler, not a runtime, not an LLM. It demonstrates
 that the Furqan thesis paper's compile-time rules are mechanically
 implementable.
 
 The thesis claim under test: a meaningful fraction of code-level
 "AI hallucination" is the same shape as a long-known software
-defect, namely promising a complete answer about an input the program
+defect, promising a complete answer about an input the program
 cannot fully process. That shape can be made *structurally
 uncompilable* by the type system, in milliseconds, with no model
 in the loop.
@@ -40,36 +40,33 @@ zero runtime dependencies and no model in the loop.
 
 | # | Primitive             | Module                       | Status                                       |
 |---|-----------------------|------------------------------|----------------------------------------------|
-| 1 | Bismillah scope       | `checker/bismillah.py`       | **Shipped**, Session 1.0 (v0.1.0)            |
-| 2 | Zahir / batin         | `checker/zahir_batin.py`     | **Shipped**, Session 1.3 (v0.2.0)            |
-| 3 | Additive-only modules | `checker/additive.py`        | **Shipped**, Session 1.4 (v0.3.0)            |
-| 4 | Scan-incomplete       | `checker/incomplete.py`      | **Shipped**, Session 1.5 (v0.4.0)            |
-| 5 | Mizan calibration     | `checker/mizan.py`           | **Shipped**, Session 1.6 (v0.5.0)            |
-| 6 | Tanzil build ordering | `checker/tanzil.py`          | **Shipped**, Session 1.7 (v0.6.0)            |
-| 7 | Ring-close            | `checker/ring_close.py`      | **Shipped**, Session 1.8 (v0.7.0)            |
-| + | Status-coverage (D11, checker extension of #4) | `checker/status_coverage.py` | **Shipped**, Session 1.10 (v0.8.0)           |
+| 1 | Bismillah scope       | `checker/bismillah.py`       | **Shipped** (Session 1.0, v0.1.0)           |
+| 2 | Zahir / batin         | `checker/zahir_batin.py`     | **Shipped** (Session 1.3, v0.2.0)           |
+| 3 | Additive-only modules | `checker/additive.py`        | **Shipped** (Session 1.4, v0.3.0)           |
+| 4 | Scan-incomplete       | `checker/incomplete.py`      | **Shipped** (Session 1.5, v0.4.0)           |
+| 5 | Mizan calibration     | `checker/mizan.py`           | **Shipped** (Session 1.6, v0.5.0)           |
+| 6 | Tanzil build ordering | `checker/tanzil.py`          | **Shipped** (Session 1.7, v0.6.0)           |
+| 7 | Ring-close            | `checker/ring_close.py`      | **Shipped** (Session 1.8, v0.7.0)           |
 
-**Seven of seven primitives shipped; the ring is closed.** Each row
-corresponds to a single closing `HANDOFF.md` block; each version
-corresponds to a `CHANGELOG.md` minor-version bump that registers the
-source-language additions. (Primitive names are Arabic by canonical
-convention; see `docs/NAMING.md` §1 for the rationale and the
-English-alias policy.)
+**Seven of seven primitives shipped, the ring is closed.** Each row corresponds to a single
+closing `HANDOFF.md` block; each version corresponds to a
+`CHANGELOG.md` minor-version bump that registers the source-language
+additions.
 
 ## Verified state
 
-* 366 tests passing in ~0.5 seconds on Python 3.10+
-* Zero runtime dependencies; Python standard library only
-* Public surface 42 / 32 / 4 (parser / checker / errors), additive-only invariant held since v0.1.0
-* Nine closing audits, zero open findings under cross-verification across three AI collaborators (Anthropic Claude, xAI Grok, Perplexity Computer)
+* 453 tests passing in ~0.7 seconds on Python 3.10+
+* Zero runtime dependencies, Python standard library only
+* Public surface 42 / 38 / 4 (parser / checker / errors), additive-only invariant held since v0.1.0
+* Eight sessions, eight closing audits, zero open findings under the Munafiq Protocol cross-verification across three AI collaborators (Anthropic Claude, xAI Grok, Perplexity Computer)
 
 ## Quickstart
 
 ```bash
-git clone https://github.com/BayyinahEnterprise/Furqan---Honest-Programming-Langage.git
-cd Furqan---Honest-Programming-Langage
+git clone https://github.com/BayyinahEnterprise/furqan.git
+cd furqan
 pip install -e .
-python -m pytest        # 334 passing in ~0.4s
+python -m pytest        # 453 passing in ~0.7s
 ```
 
 The library:
@@ -88,15 +85,53 @@ for d in diagnostics:
     print(d.minimal_fix)
 ```
 
+## CLI usage
+
+After `pip install -e .`, the `furqan` command is on your PATH.
+
+```bash
+# Check a single file (runs 9 checkers)
+furqan check examples/clean_module.furqan
+
+# Strict mode (exit 3 on any Marad)
+furqan check examples/status_collapse.furqan --strict
+
+# Show version
+furqan version
+```
+
+Three example files demonstrate the contract:
+
+```bash
+$ furqan check examples/clean_module.furqan
+PASS  examples/clean_module.furqan
+  9 checkers ran. Zero diagnostics.
+
+$ furqan check examples/status_collapse.furqan
+MARAD  examples/status_collapse.furqan
+  1 violation(s):
+    [status_coverage] function 'summarize' calls 'deep_scan' ...
+
+$ furqan check examples/missing_return_path.furqan
+MARAD  examples/missing_return_path.furqan
+  1 violation(s):
+    [all_paths_return] function 'scan' declares a return type ...
+```
+
+Exit codes: `0` PASS, `1` MARAD, `2` PARSE ERROR, `3` STRICT MODE failure.
+
+The additive-only checker is NOT run in single-file mode; it
+requires a prior-version module for comparison. Cross-version
+checks live in the test suite via the additive sidecar protocol.
+
 ## What "structural honesty" means in code
 
 The repository ships a self-contained demonstration in `demo/`.
 Three frontier LLMs (ChatGPT, Claude, Gemini) were each handed the
 same encrypted PDF and asked to summarise its contents. Their
 behaviour diverged: one named the encryption explicitly, one blamed
-the file ("unsupported or corrupted", though it was neither), one
-implied user error ("check the file for any issues", though there
-were none).
+the file ("unsupported or corrupted", it was neither), one implied
+user error ("check the file for any issues", there were none).
 
 The Furqan compile-time scan-incomplete primitive rejects the
 function shape that would promise a complete answer about such a
@@ -131,13 +166,11 @@ src/furqan/
 │   ├── parser.py          strict recursive-descent; F1/F2 (no opaque eaters)
 │   └── ast_nodes.py       frozen dataclasses for every parsed shape
 ├── checker/
-│   ├── bismillah.py       Primitive 1: purpose-hierarchy / scope discipline
-│   ├── zahir_batin.py     Primitive 2: surface vs depth layer separation
-│   ├── additive.py        Primitive 3: module evolution; sidecar history
-│   ├── incomplete.py      Primitive 4: scan-incomplete; the demo target
-│   ├── mizan.py           Primitive 5: three-valued calibration blocks
-│   ├── tanzil.py          Primitive 6: build-ordering discipline
-│   └── ring_close.py      Primitive 7: whole-shape closure invariant
+│   ├── bismillah.py       Primitive 1, purpose-hierarchy / scope discipline
+│   ├── zahir_batin.py     Primitive 2, surface vs depth layer separation
+│   ├── additive.py        Primitive 3, module evolution; sidecar history
+│   ├── incomplete.py      Primitive 4, scan-incomplete; the demo target
+│   └── mizan.py           Primitive 5, three-valued calibration blocks
 └── errors/
     └── marad.py           diagnostic record: diagnosis, location, fix, regression check
 ```
@@ -149,12 +182,12 @@ I/O, no exceptions on the success path.
 
 ## Documentation
 
-* `HANDOFF.md`: rolling session-close audit log; the most recent verified state is at the top, prior sessions are appended below as isnad.
-* `CHANGELOG.md`: every minor-version bump registers the source-language additions and breaking-change boundary.
-* `docs/NAMING.md`: naming-convention discipline; common-English-word reservation policy; additive-only invariant.
-* `docs/CONTRIBUTING.md`: session-close protocol; polish-patch protocol §8.
-* `docs/internals/CHECKER.md`: per-primitive checker semantics, scope, and limits.
-* `docs/internals/LEXER.md`: tokenizer extensions per phase.
+* `HANDOFF.md`, rolling session-close audit log; the most recent verified state is at the top, prior sessions are appended below as isnad.
+* `CHANGELOG.md`, every minor-version bump registers the source-language additions and breaking-change boundary.
+* `docs/NAMING.md`, naming-convention discipline; common-English-word reservation policy; additive-only invariant.
+* `docs/CONTRIBUTING.md`, session-close protocol; polish-patch protocol §8.
+* `docs/internals/CHECKER.md`, per-primitive checker semantics, scope, and limits.
+* `docs/internals/LEXER.md`, tokenizer extensions per phase.
 
 ## The thesis paper
 
@@ -184,15 +217,15 @@ paper's references section.
 
 ## Authors
 
-* **Bilal Syed Arfeen**: product, architecture, research lead
-* **Fraz Ashraf**: co-architect, governance protocol, first author on the Furqan thesis paper
+* **Bilal Syed Arfeen**, product, architecture, research lead
+* **Fraz Ashraf**, co-architect, governance protocol, first author on the Furqan thesis paper
 
 With AI collaborators (acknowledged contributors, not co-founders):
 Anthropic Claude, xAI Grok, Perplexity Computer.
 
 ## License
 
-Apache License 2.0; see [LICENSE](./LICENSE).
+Apache License 2.0, see [LICENSE](./LICENSE).
 
 ## Citation
 
@@ -203,9 +236,9 @@ If you use Furqan in academic work:
   author    = {Arfeen, Bilal Syed and Ashraf, Fraz},
   title     = {Furqan: A Programming-Language Type-Checker for Structural Honesty},
   year      = {2026},
-  version   = {0.8.0},
+  version   = {0.9.0},
   publisher = {Zenodo},
   doi       = {10.5281/zenodo.19750529},
-  url       = {https://github.com/BayyinahEnterprise/Furqan---Honest-Programming-Langage}
+  url       = {https://github.com/BayyinahEnterprise/furqan}
 }
 ```

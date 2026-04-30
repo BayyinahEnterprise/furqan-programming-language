@@ -1,0 +1,38 @@
+// D22 fixture #7 (invalid) - mismatches inside if/else bodies.
+//
+// Tests that the recursive walker descends into both `body` and
+// `else_body` (the Phase 3.0 D15 additive extension on IfStmt).
+// The function declares -> Report. The if-body returns Integrity
+// (mismatch), the else-body returns Incomplete (mismatch). Two M1
+// marads fire on a single function.
+//
+// Expected: exactly two M1 marads. Each names a different return
+// statement location.
+
+bismillah ElseMismatch {
+    authority: NAMING_MD
+    serves: purpose_hierarchy.balance_for_living_systems
+    scope: process
+    not_scope: nothing_excluded
+}
+
+type Report {
+    zahir {
+        title: String
+    }
+    batin {
+        data: Bytes
+    }
+}
+
+fn process() -> Report {
+    if not input {
+        return Integrity
+    } else {
+        return Incomplete {
+            reason: "wrong type entirely",
+            max_confidence: 0.5,
+            partial_findings: empty_list
+        }
+    }
+}

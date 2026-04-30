@@ -1,0 +1,29 @@
+// D24 fixture #6 (invalid) - if/else where only one arm returns.
+//
+// The if-body returns. The else-body runs a side-effect call but
+// does not return. The IfStmt's recurrence requires BOTH branches
+// to all-paths-return; this one fails on the else. There is no
+// trailing return after the if/else, so the sequence as a whole
+// fails too. P1 fires.
+//
+// Expected: exactly one P1 marad. The diagnosis names the
+// function and references the missing-return path.
+
+bismillah HalfBranches {
+    authority: NAMING_MD
+    serves: purpose_hierarchy.balance_for_living_systems
+    scope: check
+    not_scope: nothing_excluded
+}
+
+fn check() -> Integrity | Incomplete {
+    if not data {
+        return Incomplete {
+            reason: "corrupt",
+            max_confidence: 0.5,
+            partial_findings: empty_list
+        }
+    } else {
+        verify(data)
+    }
+}

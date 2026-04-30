@@ -1,0 +1,39 @@
+// D24 fixture #3 (valid) - nested if/else, every leaf returns.
+//
+// Outer if/else with an inner if/else inside the else-body. The
+// recurrence terminates correctly:
+//   _all_paths_return([outer_if]) requires both branches return
+//   - if-body: bare return (terminates True)
+//   - else-body: contains an inner if/else
+//     - inner if-body: bare return (terminates True)
+//     - inner else-body: bare return (terminates True)
+//     - inner if/else qualifies, so else-body terminates True
+//   - both branches True, so outer if/else terminates True
+//   - outer sequence terminates True
+
+bismillah Nested {
+    authority: NAMING_MD
+    serves: purpose_hierarchy.balance_for_living_systems
+    scope: decide
+    not_scope: nothing_excluded
+}
+
+fn decide() -> Integrity | Incomplete {
+    if not outer_check {
+        return Incomplete {
+            reason: "outer failed",
+            max_confidence: 0.5,
+            partial_findings: empty_list
+        }
+    } else {
+        if not inner_check {
+            return Incomplete {
+                reason: "inner failed",
+                max_confidence: 0.5,
+                partial_findings: empty_list
+            }
+        } else {
+            return Integrity
+        }
+    }
+}

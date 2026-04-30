@@ -1,36 +1,35 @@
 """
-Tanzil build-ordering checker — Furqan Phase 2.8 primitive #6.
+Tanzil build-ordering checker, Furqan Phase 2.8 primitive #6.
 
 Per the Furqan thesis, tanzil governs the order in which modules
-are compiled and verified. The Quran was revealed progressively
-(*tanzilan*; Al-Isra 17:106 — *"And it is a Quran which We have
-divided, that you might recite it to the people over a prolonged
-period, and We have revealed it progressively"*); later revelations
-depended on earlier ones being understood. In Furqan, a module
-declares its build-order dependencies in a tanzil block, and the
-checker verifies the declaration's well-formedness.
+are compiled and verified. The discipline is progressive build
+ordering: each module declares the prior modules it depends on,
+and later modules can only be verified once their declared
+dependencies are. In Furqan, a module declares its build-order
+dependencies in a tanzil block, and the checker verifies the
+declaration's well-formedness.
 
 Three checker cases:
 
-**Case T1 — Self-dependency.**
+**Case T1: Self-dependency.**
 A tanzil block declares ``depends_on:`` referencing the module's
 own bismillah name. The trivial cycle: the smallest possible
 circular dependency. Multi-module cycles (A depends B depends A)
 are D9 work; T1 catches the single-module case at compile time
 without requiring a cross-module graph.
 
-**Case T2 — Duplicate dependency.**
+**Case T2: Duplicate dependency.**
 A tanzil block lists the same module path more than once. The
 second declaration is either a redundant paste or an attempt to
-declare two distinct dependencies that share a name — both shapes
+declare two distinct dependencies that share a name, both shapes
 deserve a loud diagnostic. First-occurrence-wins semantics: the
 first entry is treated as canonical; subsequent occurrences fire
 the marad. Same discipline as Mizan M2 and additive-only's
 catalog-duplicate handling.
 
-**Case T3 — Empty block (Advisory, not Marad).**
+**Case T3: Empty block (Advisory, not Marad).**
 A tanzil block with zero dependency entries. This is not an error
-— a module legitimately may have been evaluated for build
+, a module legitimately may have been evaluated for build
 ordering and concluded it has no external dependencies. But the
 empty declaration is structurally ambiguous (intentional zero or
 left-as-stub), so the checker emits an :class:`Advisory`:
@@ -128,17 +127,17 @@ def _check_tanzil_decl(
     (duplicate) are independent and fire in source order over
     the dependency tuple.
     """
-    # --- T3 — empty block (Advisory) ---
+    # --- T3, empty block (Advisory) ---
     if not decl.dependencies:
         yield _t3_empty_advisory(decl)
         return  # no further checks on an empty block
 
-    # --- T1 — self-dependency ---
+    # --- T1, self-dependency ---
     for dep in decl.dependencies:
         if dep.module_path == self_module_name:
             yield _t1_self_dependency_marad(decl, dep, self_module_name)
 
-    # --- T2 — duplicate dependency ---
+    # --- T2, duplicate dependency ---
     seen: dict[str, DependencyEntry] = {}
     for dep in decl.dependencies:
         if dep.module_path in seen:
@@ -162,8 +161,8 @@ def _t1_self_dependency_marad(
             f"tanzil block {decl.name!r} declares a self-dependency: "
             f"`depends_on: {dep.module_path}` references the module's "
             f"own bismillah name {self_module_name!r}. Per Furqan "
-            f"thesis (Case T1 — self-dependency), this is the trivial "
-            f"cycle — the smallest possible circular dependency. The "
+            f"thesis (Case T1, self-dependency), this is the trivial "
+            f"cycle, the smallest possible circular dependency. The "
             f"order of revelation matters precisely because later "
             f"depends on earlier; a module depending on itself has no "
             f"place in the build sequence. Multi-module cycles are "
@@ -196,12 +195,12 @@ def _t2_duplicate_marad(
         diagnosis=(
             f"tanzil block {decl.name!r} contains duplicate "
             f"dependency {dep.module_path!r}. Per Furqan thesis "
-            f"(Case T2 — duplicate dependency), each depended-on "
+            f"(Case T2, duplicate dependency), each depended-on "
             f"module appears exactly once. The second declaration "
             f"would be silently redundant under any 'last write "
             f"wins' convention; the duplication is either a paste "
             f"error or two distinct dependencies that happen to "
-            f"share a name — both shapes deserve a loud diagnostic."
+            f"share a name, both shapes deserve a loud diagnostic."
         ),
         location=dep.span,
         minimal_fix=(
@@ -222,10 +221,10 @@ def _t3_empty_advisory(decl: TanzilDecl) -> Advisory:
         primitive=PRIMITIVE_NAME,
         message=(
             f"tanzil block {decl.name!r} declares zero dependencies. "
-            f"Per Furqan thesis (Case T3 — empty block), this is not "
+            f"Per Furqan thesis (Case T3, empty block), this is not "
             f"an error: a module may legitimately have no build-order "
             f"dependencies. But the empty block is structurally "
-            f"ambiguous — did the developer intend zero dependencies, "
+            f"ambiguous, did the developer intend zero dependencies, "
             f"or leave the block as a stub for later population?"
         ),
         location=decl.span,

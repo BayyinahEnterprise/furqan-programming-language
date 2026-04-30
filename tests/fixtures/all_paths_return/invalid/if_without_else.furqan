@@ -1,0 +1,25 @@
+// D24 fixture #5 (invalid) - if-without-else, no trailing return.
+//
+// The if-body returns when the condition holds. When the
+// condition does not hold, the function falls through with no
+// return. R3 stays silent because a return DOES exist (inside
+// the if-body); D24 fires P1 because path coverage is incomplete.
+//
+// Expected: exactly one P1 marad pointing at the function `scan`.
+
+bismillah FallThrough {
+    authority: NAMING_MD
+    serves: purpose_hierarchy.balance_for_living_systems
+    scope: scan
+    not_scope: nothing_excluded
+}
+
+fn scan() -> Integrity | Incomplete {
+    if not path {
+        return Incomplete {
+            reason: "missing",
+            max_confidence: 0.5,
+            partial_findings: empty_list
+        }
+    }
+}

@@ -1,0 +1,17 @@
+// D24 fixture #1 (valid) - bare return, no branching.
+//
+// The simplest all-paths-return shape: a single top-level return
+// statement. The for-loop in `_all_paths_return` finds it on
+// iteration zero and returns True. No branching, no fall-through
+// to worry about.
+
+bismillah Simple {
+    authority: NAMING_MD
+    serves: purpose_hierarchy.balance_for_living_systems
+    scope: compute
+    not_scope: nothing_excluded
+}
+
+fn compute() -> Integrity {
+    return Integrity
+}

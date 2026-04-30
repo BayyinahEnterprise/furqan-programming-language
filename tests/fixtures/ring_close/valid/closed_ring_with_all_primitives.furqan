@@ -48,8 +48,7 @@ mizan calibration {
 fn verify(file: Document) -> Integrity | Incomplete {
     if not is_encrypted(file) {
         return Integrity
-    }
-    if is_encrypted(file) {
+    } else {
         return Incomplete {
             reason: "encrypted container, no credentials",
             max_confidence: 0.5,

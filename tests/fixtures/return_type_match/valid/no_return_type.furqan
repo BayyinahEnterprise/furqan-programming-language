@@ -1,0 +1,19 @@
+// D22 fixture #4 (valid) - function with no declared return type
+// is skipped.
+//
+// `noop` declares no return type, so D22 has no contract to check.
+// (Ring-close R3 also stays silent on void functions, for the
+// same reason.) Pins that the public-entry-point's
+// `fn.return_type is None` short-circuit covers void functions
+// without firing spurious M1s on whatever the body might or might
+// not return.
+
+bismillah NoType {
+    authority: NAMING_MD
+    serves: purpose_hierarchy.balance_for_living_systems
+    scope: noop
+    not_scope: nothing_excluded
+}
+
+fn noop() {
+}
