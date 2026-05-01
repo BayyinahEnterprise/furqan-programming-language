@@ -1,6 +1,6 @@
 # Furqan
 
-[![CI](https://github.com/BayyinahEnterprise/Furqan---Honest-Programming-Language/actions/workflows/ci.yml/badge.svg)](https://github.com/BayyinahEnterprise/Furqan---Honest-Programming-Language/actions/workflows/ci.yml)
+[![CI](https://github.com/BayyinahEnterprise/furqan-programming-language/actions/workflows/ci.yml/badge.svg)](https://github.com/BayyinahEnterprise/furqan-programming-language/actions/workflows/ci.yml)
 
 A programming-language type-checker that enforces structural honesty
 at compile time. Furqan rejects code shapes that promise more than
