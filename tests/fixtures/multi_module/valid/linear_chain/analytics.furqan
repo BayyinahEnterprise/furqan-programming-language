@@ -1,6 +1,3 @@
-// D9/D20 fixture, leaf of the linear chain.
-// Analytics depends on DataLoader, transitively on Foundation.
-
 bismillah Analytics {
     authority: NAMING_MD
     serves: purpose_hierarchy.balance_for_living_systems
@@ -10,4 +7,8 @@ bismillah Analytics {
 
 tanzil analytics_deps {
     depends_on: DataLoader
+}
+
+fn placeholder() -> Integrity {
+    return Integrity
 }

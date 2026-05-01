@@ -1,0 +1,15 @@
+bismillah DataProvider {
+    authority: NAMING_MD
+    serves: purpose_hierarchy.balance_for_living_systems
+    scope: types
+    not_scope: nothing_excluded
+}
+
+type Data {
+    zahir { name: String }
+    batin { id: ID }
+}
+
+fn make_data() -> Data {
+    return Data
+}

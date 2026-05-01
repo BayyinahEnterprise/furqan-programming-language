@@ -1,12 +1,14 @@
-// D9/D20 G2 fixture. Two-module cycle: A -> B -> A.
-
 bismillah A {
     authority: NAMING_MD
     serves: purpose_hierarchy.balance_for_living_systems
-    scope: a_side
+    scope: consume
     not_scope: nothing_excluded
 }
 
 tanzil a_deps {
     depends_on: B
+}
+
+fn consume(input: Report) -> Integrity {
+    return Integrity
 }

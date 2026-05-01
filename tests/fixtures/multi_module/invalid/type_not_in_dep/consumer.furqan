@@ -1,14 +1,14 @@
-bismillah LCA {
+bismillah DataConsumer {
     authority: NAMING_MD
     serves: purpose_hierarchy.balance_for_living_systems
-    scope: first
+    scope: consume
     not_scope: nothing_excluded
 }
 
-tanzil a_deps {
-    depends_on: LCB
+tanzil consumer_deps {
+    depends_on: DataProvider
 }
 
-fn placeholder() -> Integrity {
+fn process(input: MysteryType) -> Integrity {
     return Integrity
 }

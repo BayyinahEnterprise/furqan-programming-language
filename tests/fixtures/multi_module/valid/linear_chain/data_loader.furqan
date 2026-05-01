@@ -1,13 +1,14 @@
-// D9/D20 fixture, middle of the linear chain.
-// DataLoader depends on Foundation.
-
 bismillah DataLoader {
     authority: NAMING_MD
     serves: purpose_hierarchy.balance_for_living_systems
-    scope: load_inputs
+    scope: load
     not_scope: nothing_excluded
 }
 
-tanzil loader_deps {
+tanzil dataloader_deps {
     depends_on: Foundation
+}
+
+fn placeholder() -> Integrity {
+    return Integrity
 }

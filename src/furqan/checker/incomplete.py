@@ -1,8 +1,9 @@
 """
-Scan-incomplete return-type checker, Furqan Phase 2.6 primitive #4.
+Scan-incomplete return-type checker — Furqan Phase 2.6 primitive #4.
 
 Per the Furqan thesis paper §4 (Scan-Incomplete Honesty as a Return
-Type), a function whose declared return type is
+Type, anchored on Al-Baqarah 2:286 — *"Allah does not burden a soul
+beyond its capacity"*), a function whose declared return type is
 ``Integrity | Incomplete`` cannot return bare ``Integrity`` from a
 path on which its own incompleteness signal was not syntactically
 ruled out. The discipline is the language-level transposition of
@@ -15,7 +16,7 @@ at the function-signature level.
 
 Two cases are enforced:
 
-**Case A: Bare Integrity returned without ruling out incompleteness.**
+**Case A — Bare Integrity returned without ruling out incompleteness.**
 A function with ``-> Integrity | Incomplete`` has at least one
 ``return Integrity`` whose enclosing path is not gated by an
 ``if not <expr>`` body. Phase 2.6 detection is *syntactic*: a path
@@ -25,7 +26,7 @@ some false positives on legitimate code that uses unusual control-
 flow shapes; those are registered as known limitations rather than
 papered over (see `tests/fixtures/known_limitation/`).
 
-**Case B: Incomplete literal missing required fields.**
+**Case B — Incomplete literal missing required fields.**
 An ``Incomplete { ... }`` constructor literal that omits any of the
 three required fields (``reason``, ``max_confidence``,
 ``partial_findings``). The parser accepts any field set; the
@@ -168,13 +169,13 @@ def _walk_statements(
                 fn=fn,
                 check_case_a=check_case_a,
             )
-            # Phase 3.0 (D15), descend into the else-body when
+            # Phase 3.0 (D15) — descend into the else-body when
             # present. The else-body's effective guard is the
             # OPPOSITE polarity of the if-body's guard: if the
             # if-condition is `not <expr>` (negated, ruling out
             # incompleteness on the if-path), the else-body executes
             # exactly when `<expr>` is true (non-negated). The flip
-            # is essential, without it, an `else { return Integrity }`
+            # is essential — without it, an `else { return Integrity }`
             # arm following an `if not encrypted` would be wrongly
             # treated as guarded, when in fact the else runs when
             # `encrypted` is true and bare Integrity in that arm is
@@ -209,13 +210,13 @@ def _check_return(
     """Check a single return statement for Case A and Case B
     violations."""
     value = stmt.value
-    # Case A, bare Integrity return on a union-typed function
+    # Case A — bare Integrity return on a union-typed function
     # whose enclosing path does not negate an incompleteness
     # predicate.
     if check_case_a and isinstance(value, IntegrityLiteral):
         if "negated" not in guard_stack:
             yield _case_a_marad(fn=fn, stmt=stmt, guard_stack=guard_stack)
-    # Case B, Incomplete literal missing required fields. This
+    # Case B — Incomplete literal missing required fields. This
     # check applies regardless of the function's return type: an
     # Incomplete literal is always a structured diagnostic and must
     # always carry the three required fields.
@@ -283,7 +284,7 @@ def _case_a_marad(
             f"`Integrity | Incomplete` but a return path produces "
             f"bare `Integrity` without first ruling out "
             f"incompleteness: {guard_description}. Per Furqan thesis "
-            f"§4 (Case A, producer-side honesty), every "
+            f"§4 (Case A - producer-side honesty), every "
             f"`return Integrity` on a union-typed function must be "
             f"guarded by an explicit incompleteness check. The rule "
             f"is the language-level form of Bayyinah's "
@@ -324,11 +325,11 @@ def _case_b_marad(
         diagnosis=(
             f"`Incomplete` literal in function {fn.name!r} is missing "
             f"required field {missing_field!r}, which "
-            f"{role_description}. Per Furqan thesis §4 (Case B, "
+            f"{role_description}. Per Furqan thesis §4 (Case B - "
             f"literal-shape honesty), every `Incomplete` value must "
             f"declare reason, max_confidence, and partial_findings. "
             f"An `Incomplete` value missing any of these is a "
-            f"degenerate diagnostic, it signals incompleteness "
+            f"degenerate diagnostic - it signals incompleteness "
             f"without naming the cause, the bound, or the partial "
             f"results."
         ),

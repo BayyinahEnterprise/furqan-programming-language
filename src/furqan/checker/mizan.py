@@ -1,9 +1,12 @@
 """
-Mizan well-formedness checker, Furqan Phase 2.7 primitive #5.
+Mizan well-formedness checker — Furqan Phase 2.7 primitive #5.
 
 Per the Furqan thesis paper §Primitive 4 (*Mizan Constraints:
-Three-Valued Calibration*), every mizan calibration block declares
-three canonical fields together: ``la_tatghaw`` (do not transgress),
+Three-Valued Calibration*, anchored on Ar-Rahman 55:7-9 — *"He has
+set up the balance, that you may not transgress the balance. So
+establish weight in justice and do not make the balance
+deficient."*), every mizan calibration block declares three
+canonical fields together: ``la_tatghaw`` (do not transgress),
 ``la_tukhsiru`` (do not make deficient), ``bil_qist`` (calibrate
 fairly). The three are calibrated jointly because tightening one
 typically loosens the others (FRaZ non-monotonicity, Underwood et
@@ -17,28 +20,29 @@ syntactic well-formedness check on `mizan` blocks.
 Three checker cases are enforced (M3 lives in the parser layer,
 see Phase 2.7 §6.4 routing rationale below):
 
-**Case M1: Missing required field.**
+**Case M1 — Missing required field.**
 A `mizan` block omits one of the three canonical fields. One
 marad per missing field, all reported in a single pass.
 
-**Case M2: Duplicate field.**
+**Case M2 — Duplicate field.**
 A `mizan` block contains the same canonical field name more than
 once. Marad fires on every occurrence after the first; the first
 is treated as the "intended" declaration.
 
-**Case M4: Out-of-order fields.**
+**Case M4 — Out-of-order fields.**
 All three canonical fields are present, no duplicates, but the
 order of appearance does not match the canonical sequence
-(la_tatghaw, then la_tukhsiru, then bil_qist), matching the thesis
-example sequence.
+(la_tatghaw, then la_tukhsiru, then bil_qist — matching the thesis
+example sequence and the underlying Quranic ordering at Ar-Rahman
+55:7-9).
 
-**Case M3: Unknown field, NOT a checker case.**
+**Case M3 — Unknown field — NOT a checker case.**
 Per Phase 2.7 §6.4, mizan field heads are *keyword* tokens, not
 identifiers. The parser enforces field-head position by raising a
 `ParseError` if any non-canonical token appears where a field
 head is required. By the time a `MizanDecl` reaches this checker,
 every field head is canonical by construction; an unknown-field
-guard inside `check_mizan` would be structurally unreachable,
+guard inside `check_mizan` would be structurally unreachable —
 dead defensive code that produces a false signal of defence-in-
 depth. Honest layering: the parser owns token-shape invariants;
 the checker owns semantic invariants over a well-formed AST.
@@ -152,7 +156,7 @@ def _check_mizan_decl(decl: MizanDecl) -> Iterable[Marad]:
     individually false (or true) regardless of the others; the
     short-circuit on M4 is purely a diagnostic-quality choice.
     """
-    # --- M2, duplicate field detection ---
+    # --- M2 — duplicate field detection ---
     seen: dict[str, MizanField] = {}
     duplicates: list[MizanField] = []
     for field in decl.fields:
@@ -163,7 +167,7 @@ def _check_mizan_decl(decl: MizanDecl) -> Iterable[Marad]:
     for dup in duplicates:
         yield _m2_duplicate_marad(decl, dup)
 
-    # --- M1, missing field detection ---
+    # --- M1 — missing field detection ---
     present_names = set(seen.keys())
     missing = [
         name for name in REQUIRED_MIZAN_FIELDS
@@ -172,7 +176,7 @@ def _check_mizan_decl(decl: MizanDecl) -> Iterable[Marad]:
     for name in missing:
         yield _m1_missing_marad(decl, name)
 
-    # --- M4, out-of-order detection ---
+    # --- M4 — out-of-order detection ---
     # Only run if every canonical field is present (otherwise
     # M1 is the load-bearing diagnostic; M4 would be redundant).
     # Duplicates are filtered to first-occurrence only.
@@ -196,13 +200,13 @@ def _m1_missing_marad(decl: MizanDecl, missing_field: str) -> Marad:
         diagnosis=(
             f"mizan block {decl.name!r} is missing required field "
             f"{missing_field!r}, which is {role}. Per Furqan thesis "
-            f"§Primitive 4 (Case M1, missing required field), every "
+            f"§Primitive 4 (Case M1 - missing required field), every "
             f"mizan block must declare all three calibration "
             f"commands: la_tatghaw (do not transgress), la_tukhsiru "
             f"(do not make deficient), bil_qist (calibrate fairly). "
             f"The three commands are calibrated jointly; declaring "
             f"only two is the canonical Process-2 risk for this "
-            f"primitive, the block syntactically exists but one "
+            f"primitive - the block syntactically exists but one "
             f"balance-point is silently absent."
         ),
         location=decl.span,
@@ -229,7 +233,7 @@ def _m2_duplicate_marad(decl: MizanDecl, dup_field: MizanField) -> Marad:
         diagnosis=(
             f"mizan block {decl.name!r} contains duplicate field "
             f"{dup_field.name!r}. Per Furqan thesis §Primitive 4 "
-            f"(Case M2, duplicate field), each calibration "
+            f"(Case M2 - duplicate field), each calibration "
             f"command appears exactly once. The second declaration "
             f"would silently override the first under any 'last "
             f"write wins' convention, making one of the two bound "
@@ -261,8 +265,9 @@ def _m4_out_of_order_marad(
         diagnosis=(
             f"mizan block {decl.name!r} has fields in non-canonical "
             f"order. Canonical order: {canonical} (per thesis "
-            f"§Primitive 4 example 1). Actual order in the block: "
-            f"{actual}. Per Furqan thesis §Primitive 4 (Case M4, "
+            f"§Primitive 4 example 1, matching the textual sequence "
+            f"of Ar-Rahman 55:7-9). Actual order in the block: "
+            f"{actual}. Per Furqan thesis §Primitive 4 (Case M4 - "
             f"out-of-order fields), pinning the order in the "
             f"language preserves the textual sequence the "
             f"discipline derives from."

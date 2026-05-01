@@ -1,14 +1,14 @@
-bismillah LCA {
+bismillah Top {
     authority: NAMING_MD
     serves: purpose_hierarchy.balance_for_living_systems
-    scope: first
+    scope: consume
     not_scope: nothing_excluded
 }
 
-tanzil a_deps {
-    depends_on: LCB
+tanzil top_deps {
+    depends_on: Middle
 }
 
-fn placeholder() -> Integrity {
+fn use_base(input: BaseType) -> Integrity {
     return Integrity
 }

@@ -1,9 +1,10 @@
-// D9/D20 fixture, linear chain root.
-// Foundation declares no tanzil block, it is the root of the chain.
-
-bismillah Foundation {
+bismillah DemoFoundation {
     authority: NAMING_MD
     serves: purpose_hierarchy.balance_for_living_systems
-    scope: provide_primitives
+    scope: foundation_scope
     not_scope: nothing_excluded
+}
+
+fn placeholder() -> Integrity {
+    return Integrity
 }

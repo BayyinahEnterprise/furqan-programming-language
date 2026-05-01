@@ -127,7 +127,11 @@ RingCloseDiagnostic = Union[Marad, Advisory]
 # Public entry points
 # ---------------------------------------------------------------------------
 
-def check_ring_close(module: Module) -> list[RingCloseDiagnostic]:
+def check_ring_close(
+    module: Module,
+    *,
+    imported_types: frozenset[str] = frozenset(),
+) -> list[RingCloseDiagnostic]:
     """Run the ring-close check over a parsed :class:`Module`.
 
     Returns a list of :class:`Marad` and/or :class:`Advisory` records.
@@ -136,11 +140,26 @@ def check_ring_close(module: Module) -> list[RingCloseDiagnostic]:
     return type has a return statement, and every declared type is
     used. Marads (R1, R3) are violations that fail the strict-variant
     gate; Advisories (R2, R4) are informational.
+
+    D23 (cross-module type resolution): the optional
+    ``imported_types`` keyword argument extends R1 resolution to type
+    names defined in this module's direct dependencies. A multi-
+    module driver (the future ``Project.check_all`` from D9/D20)
+    builds the set of compound type names exported by each direct
+    dependency and passes them in. R1 then accepts a referenced type
+    iff it is declared locally OR is a builtin OR is in
+    ``imported_types``. The default empty frozenset preserves the
+    single-module behaviour: every existing call site continues to
+    work unchanged. Direct-only scoping is a deliberate design
+    choice (matches Python, Rust, Go): a module sees types from its
+    direct dependencies only, not transitive deps.
     """
     diagnostics: list[RingCloseDiagnostic] = []
 
     declared_type_names: set[str] = {t.name for t in module.compound_types}
-    resolvable_type_names: set[str] = declared_type_names | BUILTIN_TYPE_NAMES
+    resolvable_type_names: set[str] = (
+        declared_type_names | BUILTIN_TYPE_NAMES | imported_types
+    )
 
     # --- R2 — empty module body (Advisory) ---
     # Run before the per-function passes: an empty body has no
@@ -166,12 +185,21 @@ def check_ring_close(module: Module) -> list[RingCloseDiagnostic]:
     return diagnostics
 
 
-def check_ring_close_strict(module: Module) -> Module:
+def check_ring_close_strict(
+    module: Module,
+    *,
+    imported_types: frozenset[str] = frozenset(),
+) -> Module:
     """Fail-fast variant: raise :class:`MaradError` on the first
-    Marad. Advisories (R2, R4) do NOT trigger the strict path — they
+    Marad. Advisories (R2, R4) do NOT trigger the strict path - they
     are informational by design. Returns ``module`` unchanged on a
-    clean check (for fluent-style call chaining)."""
-    diagnostics = check_ring_close(module)
+    clean check (for fluent-style call chaining).
+
+    ``imported_types`` is forwarded to :func:`check_ring_close` for
+    cross-module type resolution (D23). Default empty frozenset
+    preserves single-module behaviour.
+    """
+    diagnostics = check_ring_close(module, imported_types=imported_types)
     for d in diagnostics:
         if isinstance(d, Marad):
             raise MaradError(d)
@@ -299,7 +327,7 @@ def _r1_undefined_type_marad(
             f"compound type with that name is declared in this "
             f"module and {type_name!r} is not a recognised builtin "
             f"({sorted(BUILTIN_TYPE_NAMES)}). Per Furqan thesis §6 "
-            f"(Case R1 — undefined type reference), the structural "
+            f"(Case R1 - undefined type reference), the structural "
             f"ring is broken at this edge: the signature presupposes "
             f"a type that has nothing presupposing it. A function "
             f"that declares an output of a type with no producing "
@@ -336,11 +364,11 @@ def _r2_empty_body_advisory(module: Module) -> Advisory:
         message=(
             f"module {module.bismillah.name!r} declares zero "
             f"functions and zero compound types. Per Furqan thesis "
-            f"§6 (Case R2 — empty module body), this is not an "
+            f"§6 (Case R2 - empty module body), this is not an "
             f"error: a module may legitimately exist as a stub "
             f"during development, or as a build-order placeholder "
             f"that other modules depend on. But the empty body is "
-            f"structurally ambiguous — the module's bismillah "
+            f"structurally ambiguous - the module's bismillah "
             f"declares a scope it has no shape to fulfill."
         ),
         location=module.bismillah.span,
@@ -369,7 +397,7 @@ def _r3_missing_return_marad(fn: FunctionDef) -> Marad:
             f"function {fn.name!r} declares return type "
             f"{return_type_repr} but its body contains no `return` "
             f"statement (recursing into any nested if-blocks). Per "
-            f"Furqan thesis §6 (Case R3 — missing return), the ring "
+            f"Furqan thesis §6 (Case R3 - missing return), the ring "
             f"is broken at the function level: the function "
             f"promises an output its control-flow has no path to "
             f"produce. Phase 2.9 detection is syntactic; all-paths-"
@@ -390,7 +418,7 @@ def _r3_missing_return_marad(fn: FunctionDef) -> Marad:
             f"after the fix, re-run the ring-close check; the "
             f"function must produce zero R3 marads. Verify that "
             f"scan-incomplete (Phase 2.6) Case A still passes if "
-            f"the return type is `Integrity | Incomplete` — the "
+            f"the return type is `Integrity | Incomplete` - the "
             f"two checkers compose, not collide."
         ),
     )
@@ -416,7 +444,7 @@ def _r4_unreferenced_type_advisory(type_def: CompoundTypeDef) -> Advisory:
             f"compound type {type_def.name!r} is declared but no "
             f"function in this module references it (neither as a "
             f"parameter type nor as a return type). Per Furqan "
-            f"thesis §6 (Case R4 — unreferenced type), this is not "
+            f"thesis §6 (Case R4 - unreferenced type), this is not "
             f"an error: the type may be intentionally declared "
             f"early for future use, or exported for downstream "
             f"modules to consume. But within the current module the "

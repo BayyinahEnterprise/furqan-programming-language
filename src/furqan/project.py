@@ -1,64 +1,47 @@
 """
-Multi-module project graph, Furqan D9/D20 (Phase 1).
+Furqan Project: multi-module graph analysis (D9/D20) and cross-
+module type resolution driver (D23).
 
-A :class:`Project` parses multiple ``.furqan`` files, builds the
-dependency graph from each module's tanzil declarations, and provides
-the entry points for cross-module analysis. Three graph-level checker
-cases ship in this module:
+A :class:`Project` indexes one or more parsed :class:`Module` objects
+keyed by their bismillah name, computes the dependency graph from
+each module's tanzil declarations, and provides:
 
-* **Case G1, missing dependency target (Marad).** A tanzil block
-  declares ``depends_on: X`` but no module named ``X`` exists in the
-  project. The dependency points to nothing.
-* **Case G2, cross-module cycle (Marad).** The dependency graph
-  contains a cycle (A depends on B, B depends on A, or longer
-  chains). No valid build ordering exists; the cycle makes
-  topological sort impossible.
-* **Case G3, orphan module (Advisory).** A module has no tanzil
-  declarations and no other module depends on it. It is disconnected
-  from the dependency graph. Advisory rather than Marad: the module
-  may legitimately be the project entry point or a standalone
-  utility.
+* ``dependency_graph`` : adjacency list across the project
+* ``topological_order`` : Kahn's algorithm sort, or ``None`` on cycle
+* ``check_graph`` : G1 (missing target, Marad), G2 (cycle, Marad),
+  G3 (orphan, Advisory)
+* ``check_all`` : runs every per-module checker on every module,
+  with cross-module type resolution via the ``imported_types``
+  parameter on ``check_ring_close``
 
-Per-module checkers (the existing nine: bismillah, zahir_batin,
-mizan, tanzil, ring_close, incomplete, status_coverage,
-return_type_match, all_paths_return) are not modified. The Project
-class orchestrates them when directory mode is invoked from the CLI;
-each module's structural diagnostics still come from the same
-checker functions that single-file mode runs.
+The cross-module type resolution is direct-only: a module sees the
+compound type names exported by its directly declared dependencies
+only, not transitively. This matches Python / Rust / Go module
+semantics: to use C's types from A, A must declare ``depends_on: C``
+explicitly.
 
-What this module does NOT do (deferred to D23 / Phase 3):
-
-* Cross-module type resolution. Ring-close R1 still fires for any
-  type not defined in the current module, even if the type is
-  defined in a declared dependency. D23 (Phase 2 of multi-module
-  support) will use the graph from this module to resolve type
-  references across module boundaries.
-* Cross-module status-coverage propagation. D11 still operates on a
-  single module. Phase 3 will extend status-coverage tracking to
-  follow function calls across module boundaries, again using the
-  graph from this module as its foundation.
-* External-dependency declarations. G1 fires on every dependency
-  target not present in the project. There is currently no syntax
-  for marking a dependency as external (vendored, from a registry,
-  etc.). When that surface lands, G1 will gain an exception path.
+D23 (cross-module ring-close R1) is fully delivered through this
+module: the ring-close ``imported_types`` keyword-only parameter
+that landed alongside the partial D23 work is now driven by
+``Project.check_all`` to suppress R1 false positives on imported
+types.
 """
 
 from __future__ import annotations
 
+from collections import defaultdict, deque
 from pathlib import Path
-from typing import Iterable, Union
+from typing import List, Optional, Union
 
 from furqan.errors.marad import Advisory, Marad
-from furqan.parser import parse
-from furqan.parser.ast_nodes import Module, SourceSpan
+from furqan.parser import ParseError, parse
+from furqan.parser.ast_nodes import Module
+from furqan.parser.tokenizer import TokenizeError
 
 
-PRIMITIVE_NAME: str = "graph"
+GRAPH_PRIMITIVE_NAME: str = "graph"
 
 
-# A graph diagnostic is either a Marad (G1 missing target, G2 cycle)
-# or an Advisory (G3 orphan). The union mirrors the tanzil checker's
-# return-type shape.
 GraphDiagnostic = Union[Marad, Advisory]
 
 
@@ -67,361 +50,384 @@ GraphDiagnostic = Union[Marad, Advisory]
 # ---------------------------------------------------------------------------
 
 class Project:
-    """A collection of parsed ``.furqan`` modules with a dependency graph.
+    """A collection of parsed Furqan modules with a dependency graph.
 
-    A Project is keyed by each module's bismillah name. Two files
-    declaring the same bismillah name overwrite each other in
-    :attr:`modules`; the second :meth:`add_file` call wins. (Detection
-    of duplicate-name conflicts across files is deferred; the current
-    contract assumes well-formed input where bismillah names are
-    unique per project.)
-
-    The class is mutable on the file-add surface but the dependency
-    graph is recomputed from scratch on every call to
-    :meth:`dependency_graph` or :meth:`check_graph`. No caching: the
-    cost is linear in module count and the simplicity is worth more
-    than the optimization at this size.
+    Modules are keyed by their ``bismillah.name``. The bismillah
+    primitive is parser-enforced as exactly-one-per-module, so each
+    module has a unique name. Adding two modules with the same
+    bismillah name raises :class:`ValueError` (the project model
+    requires a one-to-one map).
     """
 
     def __init__(self) -> None:
         self.modules: dict[str, Module] = {}
         self.file_paths: dict[str, Path] = {}
 
-    # ---- File loading -----------------------------------------------------
+    # ---- ingestion --------------------------------------------------------
 
     def add_file(self, path: Path) -> Module:
-        """Parse a ``.furqan`` file and add it to the project.
+        """Parse a single .furqan file and add it to the project.
 
-        Raises whatever the parser raises on malformed input
-        (TokenizeError, ParseError); callers that want to continue
-        on parse failure should wrap this call.
+        Raises ``ParseError`` / ``TokenizeError`` on parser failure;
+        ``ValueError`` if the file's bismillah name is already in
+        the project (a project requires unique bismillah names).
         """
-        source = path.read_text(encoding="utf-8")
-        module = parse(source, file=str(path))
+        path = Path(path)
+        text = path.read_text(encoding="utf-8")
+        module = parse(text, file=str(path))
         name = module.bismillah.name
+        if name in self.modules:
+            raise ValueError(
+                f"duplicate bismillah name {name!r}: "
+                f"{self.file_paths[name]} and {path}"
+            )
         self.modules[name] = module
         self.file_paths[name] = path
         return module
 
-    def add_directory(self, directory: Path) -> list[Module]:
-        """Parse all ``.furqan`` files in ``directory`` (non-recursive).
-
-        Files are loaded in sorted-path order for determinism. Empty
-        directories return an empty list and do not error.
+    def add_directory(self, directory: Path) -> List[Module]:
+        """Parse every .furqan file in the directory (non-recursive)
+        and add each to the project. Returns the list of newly added
+        modules.
         """
-        modules: list[Module] = []
+        directory = Path(directory)
+        added: List[Module] = []
         for path in sorted(directory.glob("*.furqan")):
-            modules.append(self.add_file(path))
-        return modules
+            added.append(self.add_file(path))
+        return added
 
-    # ---- Graph construction ----------------------------------------------
+    # ---- graph ------------------------------------------------------------
 
     def dependency_graph(self) -> dict[str, list[str]]:
-        """Build the adjacency list from tanzil declarations.
-
-        Returns a dict mapping each module name in the project to the
-        ordered list of names it depends on. Modules with no tanzil
-        block (or with an empty tanzil block) map to an empty list.
-        Dependency order within a module preserves source order;
-        duplicate ``depends_on:`` entries (caught by the per-module
-        T2 check) are reflected as repeated names in the list.
+        """Adjacency list across the project: each module name maps
+        to a list of the names it depends on (per its tanzil
+        declarations). A module with no tanzil block maps to an
+        empty list.
         """
         graph: dict[str, list[str]] = {}
         for name, module in self.modules.items():
             deps: list[str] = []
             for decl in module.tanzil_decls:
-                for entry in decl.dependencies:
-                    deps.append(entry.module_path)
+                for dep in decl.dependencies:
+                    deps.append(dep.module_path)
             graph[name] = deps
         return graph
 
-    def topological_order(self) -> list[str] | None:
-        """Return modules in dependency order, or ``None`` on cycle.
-
-        Uses Kahn's algorithm. Edge semantics: if module A declares
-        ``depends_on: B``, then B must be built before A. The
-        in-degree counted on each node is the number of OTHER nodes
-        that node depends on (i.e. the number of prerequisites it
-        still has unsatisfied). A node is ready when its in-degree
-        hits zero.
-
-        Returns the sorted list on success; returns ``None`` if a
-        cycle prevents a complete sort. The caller can then invoke
-        :meth:`_find_cycle` for the named cycle path.
-
-        Edges to modules outside the project (i.e. missing dependency
-        targets) are ignored for ordering purposes; G1 reports them
-        separately. Within-project edges drive the sort.
+    def topological_order(self) -> Optional[List[str]]:
+        """Return modules in topological (dependency-first) order
+        via Kahn's algorithm. Returns ``None`` if the graph contains
+        a cycle.
         """
         graph = self.dependency_graph()
-        in_degree: dict[str, int] = {name: 0 for name in graph}
+        in_degree: dict[str, int] = defaultdict(int)
+        for name in graph:
+            in_degree[name] = 0
         for name, deps in graph.items():
             for dep in deps:
-                if dep in in_degree:
+                # Edge dep -> name (dep must be built before name).
+                # Increment in_degree of name; only count edges
+                # where the source is in the project (out-of-project
+                # edges are G1's concern, not the sort's).
+                if dep in graph:
                     in_degree[name] += 1
 
-        # Stable order: process names in sorted order at each step
-        # so the topological sort is deterministic across runs.
-        ready = sorted(n for n, d in in_degree.items() if d == 0)
-        ordered: list[str] = []
-        while ready:
-            current = ready.pop(0)
-            ordered.append(current)
-            # Decrement in-degree of every node that depends on
-            # ``current`` (i.e. has ``current`` in its dep list).
-            for name, deps in graph.items():
-                if name in ordered:
-                    continue
-                if current in deps:
-                    in_degree[name] -= 1
-                    if in_degree[name] == 0 and name not in ready:
-                        ready.append(name)
-            ready.sort()
+        queue: deque[str] = deque(
+            sorted(n for n, d in in_degree.items() if d == 0)
+        )
+        order: list[str] = []
+        while queue:
+            n = queue.popleft()
+            order.append(n)
+            # Walk consumers of n.
+            for m, deps in graph.items():
+                if n in deps:
+                    in_degree[m] -= 1
+                    if in_degree[m] == 0:
+                        queue.append(m)
+            # Re-sort the queue to keep iteration deterministic.
+            queue = deque(sorted(queue))
 
-        if len(ordered) == len(graph):
-            return ordered
-        return None
+        if len(order) != len(graph):
+            return None
+        return order
 
-    # ---- Graph checking --------------------------------------------------
+    # ---- graph-level diagnostics -----------------------------------------
 
     def check_graph(self) -> list[GraphDiagnostic]:
-        """Run cross-module graph checks (G1, G2, G3).
+        """Run G1, G2, G3 on the dependency graph.
 
-        Returns a flat list of :class:`Marad` and :class:`Advisory`
-        records. Order: G1 records first (one per missing target),
-        then G2 (at most one per cycle, all involved modules named
-        in the diagnosis), then G3 advisories for orphans.
+        G1 (Marad): missing dependency target.
+        G2 (Marad): cross-module cycle.
+        G3 (Advisory): orphan module (only when project size >= 2).
         """
         diagnostics: list[GraphDiagnostic] = []
         graph = self.dependency_graph()
 
-        # --- G1, missing dependency targets ---
-        for name, module in self.modules.items():
-            for decl in module.tanzil_decls:
-                for entry in decl.dependencies:
-                    if entry.module_path not in self.modules:
-                        diagnostics.append(
-                            _g1_missing_target_marad(
-                                referrer=name,
-                                tanzil_block=decl.name,
-                                missing=entry.module_path,
-                                span=entry.span,
-                            )
-                        )
-
-        # --- G2, cross-module cycle ---
-        for cycle in _find_all_cycles(graph):
-            diagnostics.append(
-                _g2_cycle_marad(cycle, self._span_for(cycle[0]))
-            )
-
-        # --- G3, orphan modules (Advisory) ---
-        depended_on: set[str] = set()
-        for deps in graph.values():
+        # G1: missing dependency targets.
+        for name, deps in graph.items():
             for dep in deps:
-                depended_on.add(dep)
-        for name, module in self.modules.items():
-            has_outgoing = any(
-                decl.dependencies for decl in module.tanzil_decls
-            )
-            has_incoming = name in depended_on
-            if not has_outgoing and not has_incoming and len(self.modules) > 1:
-                diagnostics.append(
-                    _g3_orphan_advisory(name, module.bismillah.span)
-                )
+                if dep not in graph:
+                    diagnostics.append(self._g1_marad(name, dep))
+
+        # G2: cycle detection.
+        if self.topological_order() is None:
+            cycle = self._find_cycle(graph)
+            if cycle is not None:
+                diagnostics.append(self._g2_marad(cycle))
+
+        # G3: orphan module advisory (project size >= 2).
+        if len(self.modules) >= 2:
+            referenced: set[str] = set()
+            for deps in graph.values():
+                referenced.update(deps)
+            for name, deps in graph.items():
+                if not deps and name not in referenced:
+                    diagnostics.append(self._g3_advisory(name))
 
         return diagnostics
 
-    # ---- Helpers ----------------------------------------------------------
+    # ---- cross-module driver ---------------------------------------------
 
-    def _span_for(self, module_name: str) -> SourceSpan:
-        """Return a SourceSpan that points at the named module's
-        bismillah block, used as the diagnostic location for graph
-        marads that span multiple modules."""
-        module = self.modules[module_name]
-        return module.bismillah.span
+    def check_all(self) -> dict[str, list[GraphDiagnostic]]:
+        """Run every per-module checker on every module, with cross-
+        module type resolution. Returns ``{module_name: [diags]}``.
+
+        A G2 cycle short-circuits: ``__graph__`` carries the graph-
+        level diagnostics and per-module checks are skipped (a cyclic
+        dependency graph cannot be ordered, and per-module type
+        resolution would be ill-defined).
+        """
+        results: dict[str, list[GraphDiagnostic]] = {}
+
+        graph_diagnostics = self.check_graph()
+        if any(
+            isinstance(d, Marad) and "Case G2" in d.diagnosis
+            for d in graph_diagnostics
+        ):
+            results["__graph__"] = graph_diagnostics
+            return results
+
+        order = self.topological_order()
+        if order is None:
+            results["__graph__"] = graph_diagnostics
+            return results
+
+        # Always surface graph-level diagnostics (G1, G3) even when
+        # we proceed to per-module checks.
+        if graph_diagnostics:
+            results["__graph__"] = list(graph_diagnostics)
+
+        # Build a per-module type-export map.
+        type_exports: dict[str, set[str]] = {}
+        for name in order:
+            module = self.modules[name]
+            type_exports[name] = {
+                ct.name for ct in module.compound_types
+            }
+
+        # Per-module checks (D23 driver).
+        graph = self.dependency_graph()
+        for name in order:
+            module = self.modules[name]
+            deps = graph.get(name, [])
+            imported: set[str] = set()
+            for dep_name in deps:
+                if dep_name in type_exports:
+                    imported.update(type_exports[dep_name])
+            results[name] = _check_single_module(
+                module, imported_types=frozenset(imported),
+            )
+
+        return results
+
+    # ---- helpers ----------------------------------------------------------
+
+    @staticmethod
+    def _find_cycle(
+        graph: dict[str, list[str]],
+    ) -> Optional[List[str]]:
+        """DFS-based cycle finder. Returns the cycle as a list of
+        names where ``cycle[0] == cycle[-1]`` (the same module
+        appearing on both ends), or ``None`` if no cycle is reachable.
+        Iteration uses sorted neighbours so the report is
+        deterministic.
+        """
+        WHITE, GRAY, BLACK = 0, 1, 2
+        color: dict[str, int] = {n: WHITE for n in graph}
+        parent: dict[str, Optional[str]] = {n: None for n in graph}
+
+        for start in sorted(graph):
+            if color[start] != WHITE:
+                continue
+            stack: list[tuple[str, list[str]]] = [
+                (start, sorted(graph.get(start, [])))
+            ]
+            color[start] = GRAY
+            while stack:
+                node, neighbours = stack[-1]
+                if not neighbours:
+                    color[node] = BLACK
+                    stack.pop()
+                    continue
+                nxt = neighbours.pop(0)
+                if nxt not in color:
+                    continue
+                if color[nxt] == GRAY:
+                    # Found a cycle: walk parent pointers from
+                    # ``node`` back to ``nxt`` to build the path,
+                    # then close the loop by appending ``nxt`` again.
+                    path = [node]
+                    p = parent[node]
+                    while p is not None and p != nxt:
+                        path.append(p)
+                        p = parent[p]
+                    path.append(nxt)
+                    path.reverse()
+                    path.append(nxt)
+                    return path
+                if color[nxt] == WHITE:
+                    parent[nxt] = node
+                    color[nxt] = GRAY
+                    stack.append(
+                        (nxt, sorted(graph.get(nxt, [])))
+                    )
+        return None
+
+    def _g1_marad(self, source: str, missing: str) -> Marad:
+        return Marad(
+            primitive=GRAPH_PRIMITIVE_NAME,
+            diagnosis=(
+                f"module {source!r} declares a tanzil dependency on "
+                f"{missing!r} but no module with that bismillah name "
+                f"is in the project. Per Furqan D9/D20 (Case G1, "
+                f"missing dependency target), a tanzil declaration "
+                f"must reference a module the project can resolve. "
+                f"The build pipeline cannot order a graph whose "
+                f"edges point at non-existent nodes."
+            ),
+            location=self.modules[source].bismillah.span,
+            minimal_fix=(
+                f"either add a module with bismillah name "
+                f"{missing!r} to the project (typically by adding "
+                f"its .furqan file to the directory passed to the "
+                f"checker), or remove the `depends_on: {missing}` "
+                f"line from {source!r}'s tanzil block. If the "
+                f"dependency is satisfied by a module outside this "
+                f"project (a future cross-project import), the "
+                f"resolution is registered as Phase 3+ work."
+            ),
+            regression_check=(
+                f"after the fix, re-run the project graph check; "
+                f"every tanzil dependency must resolve to a module "
+                f"in the project."
+            ),
+        )
+
+    def _g2_marad(self, cycle: List[str]) -> Marad:
+        chain = " -> ".join(cycle)
+        # Use the first module in the cycle for the location.
+        location = self.modules[cycle[0]].bismillah.span
+        return Marad(
+            primitive=GRAPH_PRIMITIVE_NAME,
+            diagnosis=(
+                f"cross-module dependency cycle detected: {chain}. "
+                f"Per Furqan D9/D20 (Case G2, dependency cycle), the "
+                f"tanzil graph must be acyclic. A cycle means no "
+                f"module in the cycle can be built before the "
+                f"others - the discipline of progressive build "
+                f"ordering breaks at the cycle edge."
+            ),
+            location=location,
+            minimal_fix=(
+                f"break the cycle by removing one of the "
+                f"`depends_on:` lines along the chain. The right "
+                f"edge to remove is usually the back-edge that "
+                f"closes the cycle (the dependency that least "
+                f"reflects the actual build-time prerequisite). If "
+                f"each module in the cycle genuinely needs the "
+                f"others, the design has a circular structural "
+                f"problem that no per-module checker can resolve - "
+                f"refactor so one module owns the shared concern."
+            ),
+            regression_check=(
+                f"after the fix, re-run the graph check; "
+                f"`topological_order()` must succeed (return a list, "
+                f"not None)."
+            ),
+        )
+
+    def _g3_advisory(self, name: str) -> Advisory:
+        return Advisory(
+            primitive=GRAPH_PRIMITIVE_NAME,
+            message=(
+                f"module {name!r} has no tanzil dependencies and is "
+                f"not depended on by any other module in the "
+                f"project. Per Furqan D9/D20 (Case G3, orphan "
+                f"module), this is structurally ambiguous: the "
+                f"module is in scope for the project but plays no "
+                f"role in the dependency graph. It may be a stub, "
+                f"a leftover after a refactor, or a legitimate "
+                f"standalone helper - the advisory alerts the "
+                f"developer; the strict-variant gate does not fire."
+            ),
+            location=self.modules[name].bismillah.span,
+            suggestion=(
+                f"if {name!r} is intentionally standalone (a CLI "
+                f"entry point, a tooling helper), document the "
+                f"intent in its bismillah block. If it is meant to "
+                f"be consumed by other modules, add a "
+                f"`depends_on: {name}` line in the consumer's "
+                f"tanzil block. If it is leftover, remove the file."
+            ),
+        )
 
 
 # ---------------------------------------------------------------------------
-# Cycle detection
+# Per-module checker driver
 # ---------------------------------------------------------------------------
 
-def _find_all_cycles(graph: dict[str, list[str]]) -> list[list[str]]:
-    """Return one representative cycle per strongly-connected
-    component containing a cycle.
-
-    Implementation is a depth-first traversal with a stack tracking
-    the current path. When a back edge is found (an edge to a node
-    already on the current path), the cycle is the path slice from
-    that node forward, plus the back-edge target as the closing
-    node. Each detected cycle is canonicalized by rotating so its
-    lexicographically-smallest member is first; this collapses
-    duplicates produced by different DFS entry points into the same
-    SCC.
-    """
-    cycles: list[list[str]] = []
-    seen_canonical: set[tuple[str, ...]] = set()
-
-    def visit(
-        node: str,
-        stack: list[str],
-        on_stack: set[str],
-        visited: set[str],
-    ) -> None:
-        stack.append(node)
-        on_stack.add(node)
-        for dep in graph.get(node, []):
-            if dep not in graph:
-                continue  # missing target, G1 handles it
-            if dep in on_stack:
-                # Back edge, extract cycle.
-                idx = stack.index(dep)
-                cycle = stack[idx:] + [dep]
-                canonical = _canonicalize_cycle(cycle)
-                key = tuple(canonical)
-                if key not in seen_canonical:
-                    seen_canonical.add(key)
-                    cycles.append(canonical)
-            elif dep not in visited:
-                visit(dep, stack, on_stack, visited)
-        stack.pop()
-        on_stack.discard(node)
-        visited.add(node)
-
-    visited: set[str] = set()
-    for start in sorted(graph.keys()):
-        if start not in visited:
-            visit(start, [], set(), visited)
-    return cycles
-
-
-def _canonicalize_cycle(cycle: list[str]) -> list[str]:
-    """Rotate ``cycle`` so its lexicographically-smallest node is
-    first, then re-append that node at the end so the rendering
-    reads as a closed loop (e.g. ``A -> B -> A``).
-
-    The input is expected to already be a closed loop (last element
-    equals first); the function strips the trailing duplicate, finds
-    the rotation index, rotates, and re-appends the head.
-    """
-    if cycle and cycle[0] == cycle[-1]:
-        body = cycle[:-1]
-    else:
-        body = list(cycle)
-    if not body:
-        return []
-    smallest_idx = min(range(len(body)), key=lambda i: body[i])
-    rotated = body[smallest_idx:] + body[:smallest_idx]
-    return rotated + [rotated[0]]
-
-
-# ---------------------------------------------------------------------------
-# Diagnostic construction
-# ---------------------------------------------------------------------------
-
-def _g1_missing_target_marad(
+def _check_single_module(
+    module: Module,
     *,
-    referrer: str,
-    tanzil_block: str,
-    missing: str,
-    span: SourceSpan,
-) -> Marad:
-    return Marad(
-        primitive=PRIMITIVE_NAME,
-        diagnosis=(
-            f"module {referrer!r} declares a dependency on "
-            f"{missing!r} in tanzil block {tanzil_block!r}, but no "
-            f"module named {missing!r} was found in the project. "
-            f"Per Furqan multi-module Case G1 (missing dependency "
-            f"target), every depended-on module must exist somewhere "
-            f"in the compilation set. The cross-module extension of "
-            f"the tanzil T1/T2 well-formedness rules: T1 catches "
-            f"self-dependency, T2 catches duplicates within a single "
-            f"module, and G1 catches references to modules that are "
-            f"not present in the project."
-        ),
-        location=span,
-        minimal_fix=(
-            f"either add a .furqan file declaring "
-            f"`bismillah {missing} {{ ... }}` to the project, or "
-            f"remove the `depends_on: {missing}` line from tanzil "
-            f"block {tanzil_block!r} if the dependency is no longer "
-            f"needed. If the dependency is intended as external "
-            f"(vendored or from a registry), note that external-"
-            f"dependency declarations are not yet supported, see the "
-            f"D9/D20 deferred items."
-        ),
-        regression_check=(
-            f"after the fix, re-run `furqan check <directory>`; the "
-            f"graph-level checker must produce zero G1 marads. "
-            f"Verify the project still parses and that all "
-            f"per-module checkers continue to pass."
-        ),
+    imported_types: frozenset[str] = frozenset(),
+) -> list[GraphDiagnostic]:
+    """Run all 9 per-module checkers on a single module, passing
+    ``imported_types`` to ring-close so cross-module type references
+    do not trigger R1.
+
+    The additive-only checker is NOT run here: it requires a prior-
+    version sidecar comparison, which the project-level driver does
+    not provide. Cross-version checks belong to a separate workflow.
+    """
+    from furqan.checker import (
+        check_all_paths_return,
+        check_bismillah,
+        check_incomplete,
+        check_mizan,
+        check_return_type_match,
+        check_ring_close,
+        check_status_coverage,
+        check_tanzil,
+        check_zahir_batin,
     )
 
-
-def _g2_cycle_marad(cycle: list[str], span: SourceSpan) -> Marad:
-    chain = " -> ".join(cycle)
-    return Marad(
-        primitive=PRIMITIVE_NAME,
-        diagnosis=(
-            f"cross-module dependency cycle detected: {chain}. Per "
-            f"Furqan multi-module Case G2 (cross-module cycle), the "
-            f"dependency graph must be acyclic so that a topological "
-            f"build order exists. Each module in the cycle "
-            f"transitively depends on itself, no module can be "
-            f"compiled first. The single-module form of this rule "
-            f"is tanzil T1 (self-dependency); G2 is its multi-module "
-            f"generalization."
-        ),
-        location=span,
-        minimal_fix=(
-            f"break the cycle by removing one `depends_on:` edge "
-            f"along the chain {chain}. Identify the module in the "
-            f"cycle whose dependency on its successor is least "
-            f"essential (or factor the shared logic into a new "
-            f"module that all participants depend on, removing the "
-            f"back-edge that closes the loop)."
-        ),
-        regression_check=(
-            f"after the fix, re-run `furqan check <directory>`; the "
-            f"graph-level checker must produce zero G2 marads and "
-            f"`Project.topological_order()` must return a non-None "
-            f"list covering every module in the project."
-        ),
+    diagnostics: list[GraphDiagnostic] = []
+    diagnostics.extend(check_bismillah(module))
+    diagnostics.extend(check_zahir_batin(module))
+    diagnostics.extend(check_mizan(module))
+    diagnostics.extend(check_tanzil(module))
+    diagnostics.extend(
+        check_ring_close(module, imported_types=imported_types)
     )
+    diagnostics.extend(check_incomplete(module))
+    diagnostics.extend(check_status_coverage(module))
+    diagnostics.extend(check_return_type_match(module))
+    diagnostics.extend(check_all_paths_return(module))
+    return diagnostics
 
-
-def _g3_orphan_advisory(name: str, span: SourceSpan) -> Advisory:
-    return Advisory(
-        primitive=PRIMITIVE_NAME,
-        message=(
-            f"module {name!r} has no tanzil declarations and no "
-            f"other module depends on it. It is disconnected from "
-            f"the project's dependency graph (Case G3, orphan "
-            f"module). This is informational, not a structural "
-            f"violation: the module may legitimately be the project "
-            f"entry point or a standalone utility."
-        ),
-        location=span,
-        suggestion=(
-            f"if {name!r} is the intended entry point, no action is "
-            f"needed; this advisory is the developer's confirmation "
-            f"that the orphan status is recognized. If {name!r} is "
-            f"intended to be reachable from the rest of the project, "
-            f"add a `tanzil {{ ... }}` block declaring its "
-            f"dependencies, or have another module declare "
-            f"`depends_on: {name}`."
-        ),
-    )
-
-
-# ---------------------------------------------------------------------------
-# Public surface
-# ---------------------------------------------------------------------------
 
 __all__ = [
+    "GRAPH_PRIMITIVE_NAME",
     "GraphDiagnostic",
-    "PRIMITIVE_NAME",
     "Project",
 ]

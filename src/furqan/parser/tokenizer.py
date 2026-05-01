@@ -1,5 +1,5 @@
 """
-Furqan tokenizer, Phase 2 minimal surface syntax.
+Furqan tokenizer — Phase 2 minimal surface syntax.
 
 A hand-written single-pass tokenizer. No regex engine, no parser
 generator. The reader of this file sees every byte of the lexical
@@ -20,7 +20,7 @@ session) covers:
 * Whitespace:         spaces, tabs, newlines (discarded; line numbers
                       tracked)
 
-Anything else is a ``TokenizeError``: silent acceptance of unknown
+Anything else is a ``TokenizeError`` — silent acceptance of unknown
 characters is the failure mode this layer must prevent.
 
 Future-work surface (registered, not implemented this session):
@@ -50,7 +50,7 @@ class TokenKind(Enum):
 
     The set is intentionally small. Each entry corresponds to one lexical
     decision the parser will switch on. Adding a new kind requires
-    extending the parser's switch as well, the additive-only invariant
+    extending the parser's switch as well — the additive-only invariant
     on the tokenizer's surface is enforced by the parser's own tests.
     """
 
@@ -71,7 +71,7 @@ class TokenKind(Enum):
     #
     # NOT promoted (deliberate): ``verify``. Promoting ``verify`` to a
     # keyword would prohibit every non-type-verification use of the
-    # word across the entire language surface, an unacceptable scope
+    # word across the entire language surface — an unacceptable scope
     # constraint for a common English word. The zahir/batin checker
     # recognises ``verify`` by function-name comparison at the
     # checker layer, not by lexical token kind.
@@ -80,7 +80,7 @@ class TokenKind(Enum):
     SURFACE = "surface"   # English alias for zahir
     BATIN = "batin"
     DEPTH = "depth"       # English alias for batin
-    # Phase 2.5 promotions (Session 1.4), additive-only module
+    # Phase 2.5 promotions (Session 1.4) — additive-only module
     # checker primitive. Six new keywords plus the NUMBER token for
     # version literals. Each keyword passes the common-English-word
     # test from NAMING.md §1.5: every one is a structural primitive
@@ -95,7 +95,7 @@ class TokenKind(Enum):
     MAJOR_VERSION_BUMP = "major_version_bump"
     REMOVES = "removes"
     RENAMES = "renames"
-    # Phase 2.6 promotions (Session 1.5), scan-incomplete return-type
+    # Phase 2.6 promotions (Session 1.5) — scan-incomplete return-type
     # primitive. Three flow-control keywords (`if`, `not`, `return`)
     # plus the union-type punctuation (`|`) plus a string-literal token
     # kind for the `reason:` field of Incomplete. Each flow-control
@@ -112,39 +112,40 @@ class TokenKind(Enum):
     IF = "if"
     NOT = "not"
     RETURN = "return"
-    # Phase 3.0 promotion (Session 1.9), else arm of an if statement.
+    # Phase 3.0 promotion (Session 1.9) — else arm of an if statement.
     # See NAMING.md §1.6 for promotion rationale; LEXER.md §2 documents
     # the additive-on-the-rejection-side discipline this row honours.
     ELSE = "else"
-    # Phase 2.7 promotions (Session 1.6), Mizan three-valued
+    # Phase 2.7 promotions (Session 1.6) — Mizan three-valued
     # calibration block. Four new keywords for the block head and
     # the three required field heads. None are common English
     # words; the snake-case-with-underscore form encodes the
     # Arabic transliteration of the multi-word phrase (per
-    # NAMING.md §1.7). The thesis paper §Primitive 4 sets the
-    # three-valued calibration discipline: do not transgress, do
-    # not make deficient, calibrate fairly.
+    # NAMING.md §1.7). The thesis paper §Primitive 4 anchors the
+    # discipline on Ar-Rahman 55:7-9 (do not transgress, establish
+    # in justice, do not make deficient).
     MIZAN = "mizan"
     LA_TATGHAW = "la_tatghaw"
     LA_TUKHSIRU = "la_tukhsiru"
     BIL_QIST = "bil_qist"
-    # Phase 2.8 promotions (Session 1.7): Tanzil build-ordering
+    # Phase 2.8 promotions (Session 1.7) — Tanzil build-ordering
     # primitive. Two new keywords: the block declaration head
     # (`tanzil`) and the single canonical field-head keyword
-    # (`depends_on`). The discipline is that a module declares its
-    # build-order dependencies in a structured block the checker
-    # can verify for well-formedness. Multi-module
+    # (`depends_on`). Anchored on Al-Isra 17:106 ("revealed
+    # progressively, tanzilan"); the discipline is that a module
+    # declares its build-order dependencies in a structured block
+    # the checker can verify for well-formedness. Multi-module
     # graph analysis is D9, deferred to Phase 3+.
     TANZIL = "tanzil"
     DEPENDS_ON = "depends_on"
 
     # Identifiers (anything that lexes as a name but is not a keyword).
     IDENT = "ident"
-    # Numeric literal, integer (a contiguous run of digits). See
+    # Numeric literal — integer (a contiguous run of digits). See
     # docs/internals/LEXER.md §1 for the version-literal lexing
     # decision (Phase 2.5).
     NUMBER = "number"
-    # String literal, Phase 2.6 minimal form: ``"..."`` with no
+    # String literal — Phase 2.6 minimal form: ``"..."`` with no
     # escape sequences. The closing quote terminates the literal.
     # See docs/internals/LEXER.md §4 for the no-escape decision.
     STRING = "string"
@@ -183,31 +184,31 @@ KEYWORDS: Final[dict[str, TokenKind]] = {
     "scope": TokenKind.SCOPE,
     "not_scope": TokenKind.NOT_SCOPE,
     "fn": TokenKind.FN,
-    # Phase 2.4 (Session 1.3), zahir/batin keywords + type definition.
+    # Phase 2.4 (Session 1.3) — zahir/batin keywords + type definition.
     "type": TokenKind.TYPE,
     "zahir": TokenKind.ZAHIR,
     "surface": TokenKind.SURFACE,
     "batin": TokenKind.BATIN,
     "depth": TokenKind.DEPTH,
-    # Phase 2.5 (Session 1.4), additive-only module keywords.
+    # Phase 2.5 (Session 1.4) — additive-only module keywords.
     "additive_only": TokenKind.ADDITIVE_ONLY,
     "module": TokenKind.MODULE,
     "export": TokenKind.EXPORT,
     "major_version_bump": TokenKind.MAJOR_VERSION_BUMP,
     "removes": TokenKind.REMOVES,
     "renames": TokenKind.RENAMES,
-    # Phase 2.6 (Session 1.5), scan-incomplete flow-control keywords.
+    # Phase 2.6 (Session 1.5) — scan-incomplete flow-control keywords.
     "if": TokenKind.IF,
     "not": TokenKind.NOT,
     "return": TokenKind.RETURN,
-    # Phase 3.0 (D15), else arm of an if statement.
+    # Phase 3.0 (D15) — else arm of an if statement.
     "else": TokenKind.ELSE,
-    # Phase 2.7 (Session 1.6), Mizan calibration block keywords.
+    # Phase 2.7 (Session 1.6) — Mizan calibration block keywords.
     "mizan": TokenKind.MIZAN,
     "la_tatghaw": TokenKind.LA_TATGHAW,
     "la_tukhsiru": TokenKind.LA_TUKHSIRU,
     "bil_qist": TokenKind.BIL_QIST,
-    # Phase 2.8 (Session 1.7), Tanzil build-ordering keywords.
+    # Phase 2.8 (Session 1.7) — Tanzil build-ordering keywords.
     "tanzil": TokenKind.TANZIL,
     "depends_on": TokenKind.DEPENDS_ON,
 }
@@ -244,7 +245,7 @@ class TokenizeError(Exception):
     The exception carries the exact line/column so a higher-level
     diagnostic (the eventual ``marad`` wrapping) can report the
     location to the user. Bare ``Exception`` subclassing is deliberate
-   , a tokenize error is a structural error, not a value-domain
+    — a tokenize error is a structural error, not a value-domain
     error, so it does not inherit from a value-error hierarchy.
 
     Phase 3.0 (D10): the location is now exposed as structured
@@ -257,7 +258,7 @@ class TokenizeError(Exception):
 
     Both ``line`` and ``column`` default to ``0`` so any pre-existing
     raise site that has not yet been updated continues to construct
-    successfully, the additive-only invariant on the public surface
+    successfully — the additive-only invariant on the public surface
     is preserved at the constructor level.
     """
 
@@ -338,7 +339,7 @@ def tokenize(source: str) -> list[Token]:
         # ---- string literal (Phase 2.6, escapes added in Phase 3.0) ---
         # The closing quote terminates the literal. A newline inside
         # the literal is a tokenize error (rather than silently
-        # absorbing it), Phase 2.6 does not yet support multi-line
+        # absorbing it) — Phase 2.6 does not yet support multi-line
         # strings; broader lexing registered for a future phase.
         #
         # Phase 3.0 (D14) adds backslash-escape support for four
@@ -367,7 +368,7 @@ def tokenize(source: str) -> list[Token]:
                         column=start_col,
                     )
                 if source[pos] == "\\":
-                    # Validate the escape at lex time, the parser
+                    # Validate the escape at lex time — the parser
                     # unescapes for the AST value, but the tokenizer
                     # rejects unknown sequences here so the source
                     # location is the actual escape position rather
@@ -464,9 +465,9 @@ _SINGLE_PUNCT: Final[dict[str, TokenKind]] = {
     ":": TokenKind.COLON,
     ",": TokenKind.COMMA,
     ".": TokenKind.DOT,
-    # Phase 2.6 (Session 1.5), pipe for union return types.
+    # Phase 2.6 (Session 1.5) — pipe for union return types.
     "|": TokenKind.PIPE,
-    # Phase 2.7 (Session 1.6), comparison operators for Mizan.
+    # Phase 2.7 (Session 1.6) — comparison operators for Mizan.
     "<": TokenKind.LT,
     ">": TokenKind.GT,
 }
@@ -482,7 +483,7 @@ def _is_ident_continue(ch: str) -> bool:
     return ch.isascii() and (ch.isalnum() or ch == "_")
 
 
-# Phase 3.0 (D14), public helper for the parser to unescape the
+# Phase 3.0 (D14) — public helper for the parser to unescape the
 # inner content of a STRING token's lexeme. The tokenizer validates
 # escape shape at lex time; this helper translates the validated
 # raw form into the AST-node value. Kept module-private (leading

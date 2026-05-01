@@ -1,12 +1,14 @@
-// D9/D20 G2 fixture. Three-module cycle: A -> B -> C -> A.
-
-bismillah C {
+bismillah LCC {
     authority: NAMING_MD
     serves: purpose_hierarchy.balance_for_living_systems
-    scope: c_side
+    scope: third
     not_scope: nothing_excluded
 }
 
 tanzil c_deps {
-    depends_on: A
+    depends_on: LCA
+}
+
+fn placeholder() -> Integrity {
+    return Integrity
 }

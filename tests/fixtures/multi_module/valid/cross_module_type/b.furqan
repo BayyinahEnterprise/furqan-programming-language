@@ -1,12 +1,15 @@
-// D9/D20 G2 fixture. Two-module cycle: A -> B -> A.
-
 bismillah B {
     authority: NAMING_MD
     serves: purpose_hierarchy.balance_for_living_systems
-    scope: b_side
+    scope: declare
     not_scope: nothing_excluded
 }
 
-tanzil b_deps {
-    depends_on: A
+type Report {
+    zahir { name: String }
+    batin { id: ID }
+}
+
+fn make_report() -> Report {
+    return Report
 }
