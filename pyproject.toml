@@ -39,7 +39,7 @@ dev = [
 furqan = "furqan.__main__:main"
 
 [project.urls]
-Homepage = "https://github.com/BayyinahEnterprise/furqan"
+Homepage = "https://github.com/BayyinahEnterprise/furqan-programming-language"
 
 # ---------------------------------------------------------------------------
 # Package layout
