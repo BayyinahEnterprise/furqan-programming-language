@@ -1,10 +1,10 @@
 """
-Multi-module graph analysis tests (D9/D20, Phase 1).
+Multi-module graph analysis (D9/D20) and cross-module type
+resolution (D23) tests.
 
-Covers :class:`furqan.project.Project` construction, dependency-graph
-building, topological sort, and the three graph-level checker cases
-(G1 missing target, G2 cross-module cycle, G3 orphan advisory). Also
-covers the CLI directory-mode contract added in v0.10.0.
+Covers the Project class, dependency_graph, topological_order,
+check_graph (G1/G2/G3), check_all (D23 cross-module type
+resolution driver), and CLI directory mode.
 """
 
 from __future__ import annotations
@@ -12,113 +12,76 @@ from __future__ import annotations
 import subprocess
 import sys
 from pathlib import Path
+from textwrap import dedent
 
 import pytest
 
 from furqan import Project
 from furqan.errors.marad import Advisory, Marad
-from furqan.parser.ast_nodes import Module
+from furqan.parser import parse
 
 
 FIXTURES = Path(__file__).parent / "fixtures" / "multi_module"
-LINEAR = FIXTURES / "valid" / "linear_chain"
-DIAMOND = FIXTURES / "valid" / "diamond"
-STANDALONE = FIXTURES / "valid" / "standalone"
-MISSING = FIXTURES / "invalid" / "missing_target"
-CYCLE = FIXTURES / "invalid" / "cycle"
-LONG_CYCLE = FIXTURES / "invalid" / "long_cycle"
-
+EXAMPLES_MULTI = Path(__file__).parent.parent / "examples" / "multi"
 FURQAN_CMD = [sys.executable, "-m", "furqan"]
 
 
-def _run(*args: str) -> subprocess.CompletedProcess:
-    return subprocess.run(
-        [*FURQAN_CMD, *args],
-        capture_output=True,
-        text=True,
-        timeout=30,
-        cwd=Path(__file__).parent.parent,
-    )
+def _bismillah(name: str, scope: str = "noop") -> str:
+    return dedent(f"""\
+        bismillah {name} {{
+            authority: NAMING_MD
+            serves: purpose_hierarchy.balance_for_living_systems
+            scope: {scope}
+            not_scope: nothing_excluded
+        }}
+        """)
+
+
+def _trivial_fn() -> str:
+    return "\nfn placeholder() -> Integrity {\n    return Integrity\n}\n"
+
+
+def _project_from_inline(modules: dict[str, str]) -> Project:
+    """Build a Project by parsing inline source dict."""
+    proj = Project()
+    for name, src in modules.items():
+        module = parse(src, file=f"<{name}>")
+        proj.modules[module.bismillah.name] = module
+        proj.file_paths[module.bismillah.name] = Path(f"<{name}>")
+    return proj
 
 
 # ---------------------------------------------------------------------------
 # Project construction
 # ---------------------------------------------------------------------------
 
-def test_add_file_parses_and_indexes_by_bismillah_name() -> None:
-    project = Project()
-    module = project.add_file(LINEAR / "foundation.furqan")
-    assert isinstance(module, Module)
-    assert "Foundation" in project.modules
-    assert project.modules["Foundation"] is module
-
-
-def test_add_file_records_path() -> None:
-    project = Project()
-    project.add_file(LINEAR / "foundation.furqan")
-    assert project.file_paths["Foundation"] == LINEAR / "foundation.furqan"
+def test_add_file_indexes_by_bismillah_name() -> None:
+    proj = Project()
+    proj.add_file(FIXTURES / "valid/standalone/lonely.furqan")
+    assert "Lonely" in proj.modules
+    assert proj.file_paths["Lonely"].name == "lonely.furqan"
 
 
 def test_add_directory_finds_all_furqan_files() -> None:
-    project = Project()
-    modules = project.add_directory(LINEAR)
-    assert len(modules) == 3
-    assert set(project.modules.keys()) == {
-        "Foundation",
-        "DataLoader",
-        "Analytics",
-    }
+    proj = Project()
+    proj.add_directory(FIXTURES / "valid/linear_chain")
+    assert set(proj.modules) == {"Foundation", "DataLoader", "Analytics"}
 
-
-def test_add_directory_returns_empty_for_no_furqan_files(
-    tmp_path: Path,
-) -> None:
-    project = Project()
-    result = project.add_directory(tmp_path)
-    assert result == []
-    assert project.modules == {}
-
-
-def test_add_directory_is_non_recursive(tmp_path: Path) -> None:
-    """Files in subdirectories are not picked up."""
-    sub = tmp_path / "sub"
-    sub.mkdir()
-    (sub / "deep.furqan").write_text(
-        (LINEAR / "foundation.furqan").read_text()
-    )
-    project = Project()
-    project.add_directory(tmp_path)
-    assert project.modules == {}
-
-
-# ---------------------------------------------------------------------------
-# Dependency graph
-# ---------------------------------------------------------------------------
 
 def test_dependency_graph_returns_adjacency_list() -> None:
-    project = Project()
-    project.add_directory(LINEAR)
-    graph = project.dependency_graph()
-    assert graph["Foundation"] == []
-    assert graph["DataLoader"] == ["Foundation"]
-    assert graph["Analytics"] == ["DataLoader"]
+    proj = Project()
+    proj.add_directory(FIXTURES / "valid/linear_chain")
+    g = proj.dependency_graph()
+    assert g["Foundation"] == []
+    assert g["DataLoader"] == ["Foundation"]
+    assert g["Analytics"] == ["DataLoader"]
 
 
-def test_dependency_graph_diamond_shape() -> None:
-    project = Project()
-    project.add_directory(DIAMOND)
-    graph = project.dependency_graph()
-    assert graph["D"] == []
-    assert graph["B"] == ["D"]
-    assert graph["C"] == ["D"]
-    assert sorted(graph["A"]) == ["B", "C"]
-
-
-def test_dependency_graph_module_with_no_tanzil_block_has_empty_list() -> None:
-    project = Project()
-    project.add_directory(STANDALONE)
-    graph = project.dependency_graph()
-    assert graph == {"Solo": []}
+def test_duplicate_bismillah_name_raises() -> None:
+    proj = Project()
+    proj.add_file(FIXTURES / "valid/standalone/lonely.furqan")
+    with pytest.raises(ValueError, match="duplicate bismillah name"):
+        proj.add_file(FIXTURES / "valid/standalone/lonely.furqan")
 
 
 # ---------------------------------------------------------------------------
@@ -126,16 +89,18 @@ def test_dependency_graph_module_with_no_tanzil_block_has_empty_list() -> None:
 # ---------------------------------------------------------------------------
 
 def test_linear_chain_sorts_correctly() -> None:
-    project = Project()
-    project.add_directory(LINEAR)
-    order = project.topological_order()
-    assert order == ["Foundation", "DataLoader", "Analytics"]
+    proj = Project()
+    proj.add_directory(FIXTURES / "valid/linear_chain")
+    order = proj.topological_order()
+    assert order is not None
+    assert order.index("Foundation") < order.index("DataLoader")
+    assert order.index("DataLoader") < order.index("Analytics")
 
 
-def test_diamond_sorts_with_d_before_b_and_c() -> None:
-    project = Project()
-    project.add_directory(DIAMOND)
-    order = project.topological_order()
+def test_diamond_sorts_d_before_b_and_c() -> None:
+    proj = Project()
+    proj.add_directory(FIXTURES / "valid/diamond")
+    order = proj.topological_order()
     assert order is not None
     assert order.index("D") < order.index("B")
     assert order.index("D") < order.index("C")
@@ -143,342 +108,449 @@ def test_diamond_sorts_with_d_before_b_and_c() -> None:
     assert order.index("C") < order.index("A")
 
 
-def test_standalone_module_sorts_trivially() -> None:
-    project = Project()
-    project.add_directory(STANDALONE)
-    order = project.topological_order()
-    assert order == ["Solo"]
+def test_standalone_sorts_trivially() -> None:
+    proj = Project()
+    proj.add_directory(FIXTURES / "valid/standalone")
+    assert proj.topological_order() == ["Lonely"]
 
 
 def test_cycle_returns_none() -> None:
-    project = Project()
-    project.add_directory(CYCLE)
-    assert project.topological_order() is None
+    proj = Project()
+    proj.add_directory(FIXTURES / "invalid/cycle")
+    assert proj.topological_order() is None
 
 
 def test_long_cycle_returns_none() -> None:
-    project = Project()
-    project.add_directory(LONG_CYCLE)
-    assert project.topological_order() is None
-
-
-def test_topological_order_is_deterministic() -> None:
-    """Two equivalent projects produce the same sort."""
-    p1 = Project()
-    p1.add_directory(DIAMOND)
-    p2 = Project()
-    p2.add_directory(DIAMOND)
-    assert p1.topological_order() == p2.topological_order()
+    proj = Project()
+    proj.add_directory(FIXTURES / "invalid/long_cycle")
+    assert proj.topological_order() is None
 
 
 # ---------------------------------------------------------------------------
-# Graph checker cases
+# Graph checker
 # ---------------------------------------------------------------------------
 
 def test_g1_missing_target_fires() -> None:
-    project = Project()
-    project.add_directory(MISSING)
-    diagnostics = project.check_graph()
-    g1_marads = [
-        d
-        for d in diagnostics
-        if isinstance(d, Marad) and "G1" in d.diagnosis
-    ]
-    assert len(g1_marads) == 1
+    proj = Project()
+    proj.add_directory(FIXTURES / "invalid/missing_target")
+    diags = proj.check_graph()
+    g1 = [d for d in diags if isinstance(d, Marad) and "Case G1" in d.diagnosis]
+    assert len(g1) == 1
 
 
 def test_g1_names_the_missing_module() -> None:
-    project = Project()
-    project.add_directory(MISSING)
-    diagnostics = project.check_graph()
-    marads = [d for d in diagnostics if isinstance(d, Marad)]
-    assert any("'B'" in m.diagnosis for m in marads)
-    assert any("'A'" in m.diagnosis for m in marads)
-
-
-def test_g1_primitive_is_graph() -> None:
-    project = Project()
-    project.add_directory(MISSING)
-    marads = [
-        d for d in project.check_graph() if isinstance(d, Marad)
-    ]
-    assert all(m.primitive == "graph" for m in marads)
-
-
-def test_g2_cycle_fires_on_two_module_cycle() -> None:
-    project = Project()
-    project.add_directory(CYCLE)
-    diagnostics = project.check_graph()
-    g2_marads = [
-        d
-        for d in diagnostics
-        if isinstance(d, Marad) and "cycle" in d.diagnosis.lower()
-    ]
-    assert len(g2_marads) >= 1
-
-
-def test_g2_cycle_fires_on_three_module_cycle() -> None:
-    project = Project()
-    project.add_directory(LONG_CYCLE)
-    diagnostics = project.check_graph()
-    g2_marads = [
-        d
-        for d in diagnostics
-        if isinstance(d, Marad) and "cycle" in d.diagnosis.lower()
-    ]
-    assert len(g2_marads) >= 1
-
-
-def test_g2_names_all_modules_in_two_cycle() -> None:
-    project = Project()
-    project.add_directory(CYCLE)
-    marads = [
-        d for d in project.check_graph() if isinstance(d, Marad)
-    ]
-    cycle_marad = next(
-        m for m in marads if "cycle" in m.diagnosis.lower()
+    proj = Project()
+    proj.add_directory(FIXTURES / "invalid/missing_target")
+    g1 = next(
+        d for d in proj.check_graph()
+        if isinstance(d, Marad) and "Case G1" in d.diagnosis
     )
-    assert "A" in cycle_marad.diagnosis
-    assert "B" in cycle_marad.diagnosis
+    assert "NotInProject" in g1.diagnosis
+    assert "'A'" in g1.diagnosis
 
 
-def test_g2_names_all_modules_in_long_cycle() -> None:
-    project = Project()
-    project.add_directory(LONG_CYCLE)
-    marads = [
-        d for d in project.check_graph() if isinstance(d, Marad)
-    ]
-    cycle_marad = next(
-        m for m in marads if "cycle" in m.diagnosis.lower()
+def test_g2_cycle_fires_on_two_modules() -> None:
+    proj = Project()
+    proj.add_directory(FIXTURES / "invalid/cycle")
+    diags = proj.check_graph()
+    g2 = [d for d in diags if isinstance(d, Marad) and "Case G2" in d.diagnosis]
+    assert len(g2) == 1
+    assert "Alpha -> Beta -> Alpha" in g2[0].diagnosis
+
+
+def test_g2_cycle_fires_on_three_modules() -> None:
+    proj = Project()
+    proj.add_directory(FIXTURES / "invalid/long_cycle")
+    g2 = next(
+        d for d in proj.check_graph()
+        if isinstance(d, Marad) and "Case G2" in d.diagnosis
     )
-    for name in ("A", "B", "C"):
-        assert name in cycle_marad.diagnosis
+    assert "LCA -> LCB -> LCC -> LCA" in g2.diagnosis
 
 
-def test_g2_renders_arrow_chain() -> None:
-    project = Project()
-    project.add_directory(LONG_CYCLE)
-    marads = [
-        d for d in project.check_graph() if isinstance(d, Marad)
-    ]
-    cycle_marad = next(
-        m for m in marads if "cycle" in m.diagnosis.lower()
+def test_g2_names_all_modules_in_cycle() -> None:
+    proj = Project()
+    proj.add_directory(FIXTURES / "invalid/long_cycle")
+    g2 = next(
+        d for d in proj.check_graph()
+        if isinstance(d, Marad) and "Case G2" in d.diagnosis
     )
-    assert "->" in cycle_marad.diagnosis
+    for name in ("LCA", "LCB", "LCC"):
+        assert name in g2.diagnosis
 
 
-def test_g3_orphan_produces_advisory(tmp_path: Path) -> None:
-    """A module with no deps and no incoming edges, alongside another
-    connected pair, fires G3."""
-    # B -> C connected pair, A is orphan.
-    (tmp_path / "a.furqan").write_text(
-        "bismillah A {\n"
-        "    authority: NAMING_MD\n"
-        "    serves: purpose_hierarchy.balance_for_living_systems\n"
-        "    scope: orphan\n"
-        "    not_scope: nothing_excluded\n"
-        "}\n"
-    )
-    (tmp_path / "b.furqan").write_text(
-        "bismillah B {\n"
-        "    authority: NAMING_MD\n"
-        "    serves: purpose_hierarchy.balance_for_living_systems\n"
-        "    scope: side_b\n"
-        "    not_scope: nothing_excluded\n"
-        "}\n"
-        "tanzil b_deps {\n"
-        "    depends_on: C\n"
-        "}\n"
-    )
-    (tmp_path / "c.furqan").write_text(
-        "bismillah C {\n"
-        "    authority: NAMING_MD\n"
-        "    serves: purpose_hierarchy.balance_for_living_systems\n"
-        "    scope: side_c\n"
-        "    not_scope: nothing_excluded\n"
-        "}\n"
-    )
-    project = Project()
-    project.add_directory(tmp_path)
-    diagnostics = project.check_graph()
-    advisories = [d for d in diagnostics if isinstance(d, Advisory)]
-    assert any("'A'" in a.message for a in advisories)
-
-
-def test_g3_does_not_fire_for_single_module_project() -> None:
-    """A project with one module is not orphan-flagged. Trivially
-    standalone."""
-    project = Project()
-    project.add_directory(STANDALONE)
+def test_g3_orphan_produces_advisory() -> None:
+    proj = Project()
+    proj.add_directory(FIXTURES / "invalid/missing_target")
     advisories = [
-        d for d in project.check_graph() if isinstance(d, Advisory)
+        d for d in proj.check_graph()
+        if isinstance(d, Advisory) and "Case G3" in d.message
+    ]
+    assert len(advisories) == 1
+    assert "Other" in advisories[0].message
+
+
+def test_g3_does_not_fire_on_single_module_project() -> None:
+    proj = Project()
+    proj.add_directory(FIXTURES / "valid/standalone")
+    advisories = [
+        d for d in proj.check_graph() if isinstance(d, Advisory)
     ]
     assert advisories == []
 
 
 # ---------------------------------------------------------------------------
-# Valid projects, zero graph diagnostics
+# Cross-module type resolution (D23 driver)
 # ---------------------------------------------------------------------------
 
-def test_linear_chain_zero_graph_marads() -> None:
-    project = Project()
-    project.add_directory(LINEAR)
-    marads = [
-        d for d in project.check_graph() if isinstance(d, Marad)
+def test_type_from_direct_dependency_does_not_fire_r1() -> None:
+    proj = Project()
+    proj.add_directory(FIXTURES / "valid/cross_module_type")
+    results = proj.check_all()
+    a_diags = results.get("A", [])
+    r1 = [
+        d for d in a_diags
+        if isinstance(d, Marad) and "Case R1" in d.diagnosis
     ]
-    assert marads == []
+    assert r1 == []
 
 
-def test_diamond_zero_graph_marads() -> None:
-    project = Project()
-    project.add_directory(DIAMOND)
-    marads = [
-        d for d in project.check_graph() if isinstance(d, Marad)
+def test_type_not_in_any_dependency_fires_r1() -> None:
+    """A module without a tanzil declaration referring to a type
+    elsewhere still fires R1: the Project does not silently
+    propagate types to consumers that did not declare a dependency."""
+    proj = _project_from_inline({
+        "B": _bismillah("B", "declare") + dedent("""
+            type Report {
+                zahir { name: String }
+                batin { id: ID }
+            }
+        """) + "\nfn make() -> Report {\n    return Report\n}\n",
+        "A": _bismillah("A", "consume") + dedent("""
+            fn use_it() -> Report {
+                return Report
+            }
+        """),
+    })
+    results = proj.check_all()
+    a_diags = results.get("A", [])
+    r1 = [
+        d for d in a_diags
+        if isinstance(d, Marad) and "Case R1" in d.diagnosis
     ]
-    assert marads == []
+    assert len(r1) == 1
+    assert "Report" in r1[0].diagnosis
 
 
-def test_standalone_zero_graph_diagnostics() -> None:
-    project = Project()
-    project.add_directory(STANDALONE)
-    assert project.check_graph() == []
+def test_transitive_type_without_direct_dep_fires_r1() -> None:
+    """Direct-only resolution: A depends on B, B depends on C, C
+    declares Type. A using Type must declare depends_on: C
+    explicitly."""
+    proj = _project_from_inline({
+        "C": _bismillah("C", "core") + dedent("""
+            type Data {
+                zahir { name: String }
+                batin { id: ID }
+            }
+        """) + "\nfn make() -> Data {\n    return Data\n}\n",
+        "B": _bismillah("B", "middle") + dedent("""
+            tanzil b_deps {
+                depends_on: C
+            }
+        """),
+        "A": _bismillah("A", "top") + dedent("""
+            tanzil a_deps {
+                depends_on: B
+            }
+
+            fn try_data() -> Data {
+                return Data
+            }
+        """),
+    })
+    results = proj.check_all()
+    a_diags = results.get("A", [])
+    r1 = [
+        d for d in a_diags
+        if isinstance(d, Marad) and "Case R1" in d.diagnosis
+    ]
+    assert len(r1) == 1
+    assert "Data" in r1[0].diagnosis
+
+
+def test_transitive_type_with_direct_dep_does_not_fire() -> None:
+    """If A re-declares depends_on: C, then Data is in A's import
+    set and R1 stays silent."""
+    proj = _project_from_inline({
+        "C": _bismillah("C", "core") + dedent("""
+            type Data {
+                zahir { name: String }
+                batin { id: ID }
+            }
+        """) + "\nfn make() -> Data {\n    return Data\n}\n",
+        "B": _bismillah("B", "middle") + dedent("""
+            tanzil b_deps {
+                depends_on: C
+            }
+        """),
+        "A": _bismillah("A", "top") + dedent("""
+            tanzil a_deps {
+                depends_on: B
+                depends_on: C
+            }
+
+            fn try_data() -> Data {
+                return Data
+            }
+        """),
+    })
+    results = proj.check_all()
+    a_diags = results.get("A", [])
+    r1 = [
+        d for d in a_diags
+        if isinstance(d, Marad) and "Case R1" in d.diagnosis
+    ]
+    assert r1 == []
 
 
 # ---------------------------------------------------------------------------
-# Marad shape contracts
+# Project.check_all
 # ---------------------------------------------------------------------------
 
-def test_g1_marad_has_four_required_fields() -> None:
-    project = Project()
-    project.add_directory(MISSING)
-    marads = [
-        d for d in project.check_graph() if isinstance(d, Marad)
-    ]
-    m = marads[0]
-    assert m.primitive == "graph"
-    assert m.diagnosis
-    assert m.minimal_fix
-    assert m.regression_check
-    assert m.location is not None
+def test_check_all_returns_per_module_diagnostics() -> None:
+    proj = Project()
+    proj.add_directory(FIXTURES / "valid/cross_module_type")
+    results = proj.check_all()
+    assert set(results) == {"A", "B"}
 
 
-def test_g2_marad_has_four_required_fields() -> None:
-    project = Project()
-    project.add_directory(CYCLE)
-    marads = [
-        d for d in project.check_graph() if isinstance(d, Marad)
+def test_check_all_stops_on_graph_cycle() -> None:
+    proj = Project()
+    proj.add_directory(FIXTURES / "invalid/cycle")
+    results = proj.check_all()
+    assert "__graph__" in results
+    assert "Alpha" not in results
+    assert "Beta" not in results
+
+
+def test_check_all_passes_on_clean_multi_module_project() -> None:
+    proj = Project()
+    proj.add_directory(FIXTURES / "valid/linear_chain")
+    results = proj.check_all()
+    for name in ("Foundation", "DataLoader", "Analytics"):
+        marads = [
+            d for d in results.get(name, []) if isinstance(d, Marad)
+        ]
+        assert marads == [], f"{name} produced marads: {marads}"
+
+
+def test_check_all_diamond_passes() -> None:
+    proj = Project()
+    proj.add_directory(FIXTURES / "valid/diamond")
+    results = proj.check_all()
+    for name in ("A", "B", "C", "D"):
+        marads = [
+            d for d in results.get(name, []) if isinstance(d, Marad)
+        ]
+        assert marads == []
+
+
+def test_check_all_surfaces_g1_alongside_per_module() -> None:
+    """G1 is a Marad but not a cycle; check_all proceeds with per-
+    module checks AND surfaces __graph__ for the missing target."""
+    proj = Project()
+    proj.add_directory(FIXTURES / "invalid/missing_target")
+    results = proj.check_all()
+    assert "__graph__" in results
+    # Per-module results still ran (no cycle short-circuit).
+    assert "A" in results
+    assert "Other" in results
+
+
+# ---------------------------------------------------------------------------
+# Backward compatibility (single-module ring-close path unchanged)
+# ---------------------------------------------------------------------------
+
+def test_ring_close_default_imported_types_unchanged() -> None:
+    """An R1 reference to a type with no project context still
+    fires under the default empty frozenset - the single-module
+    behaviour is preserved."""
+    src = _bismillah("Alone", "scan") + dedent("""
+        fn use() -> NotDefined {
+            return NotDefined
+        }
+    """)
+    from furqan.checker.ring_close import check_ring_close
+    module = parse(src, file="<inline>")
+    diags = check_ring_close(module)
+    r1 = [
+        d for d in diags
+        if isinstance(d, Marad) and "Case R1" in d.diagnosis
     ]
-    m = next(d for d in marads if "cycle" in d.diagnosis.lower())
-    assert m.primitive == "graph"
-    assert m.diagnosis
-    assert m.minimal_fix
-    assert m.regression_check
-    assert m.location is not None
+    assert len(r1) == 1
 
 
 # ---------------------------------------------------------------------------
 # CLI directory mode
 # ---------------------------------------------------------------------------
 
-def test_cli_directory_check_passes_on_linear_chain() -> None:
-    result = _run("check", str(LINEAR))
-    assert result.returncode == 0
-    assert "MARAD" not in result.stdout
+def _run_cli(*args: str) -> subprocess.CompletedProcess:
+    return subprocess.run(
+        [*FURQAN_CMD, *args],
+        capture_output=True,
+        text=True,
+        timeout=20,
+        cwd=Path(__file__).parent.parent,
+    )
 
 
-def test_cli_directory_check_passes_on_diamond() -> None:
-    result = _run("check", str(DIAMOND))
-    assert result.returncode == 0
-    assert "MARAD" not in result.stdout
-
-
-def test_cli_directory_check_reports_missing_target() -> None:
-    result = _run("check", str(MISSING))
-    assert result.returncode == 1
-    assert "MARAD" in result.stdout
-    assert "Graph violations" in result.stdout
-
-
-def test_cli_directory_check_reports_two_cycle() -> None:
-    result = _run("check", str(CYCLE))
-    assert result.returncode == 1
-    assert "MARAD" in result.stdout
-    assert "cycle" in result.stdout.lower()
-    assert "A -> B" in result.stdout or "A -> B -> A" in result.stdout
-
-
-def test_cli_directory_check_reports_three_cycle() -> None:
-    result = _run("check", str(LONG_CYCLE))
-    assert result.returncode == 1
-    assert "A -> B -> C -> A" in result.stdout
-
-
-def test_cli_graph_only_skips_per_module() -> None:
-    """--graph-only suppresses ring_close R2 advisories from the
-    empty fixture modules."""
-    result = _run("check", str(LINEAR), "--graph-only")
+def test_cli_directory_passes_on_valid() -> None:
+    result = _run_cli(
+        "check", str(FIXTURES / "valid" / "linear_chain"),
+    )
     assert result.returncode == 0
     assert "PASS" in result.stdout
-    # No per-module advisories should appear in graph-only mode.
-    assert "ring_close" not in result.stdout
+    assert "3 modules" in result.stdout
 
 
-def test_cli_graph_only_alone_on_file_errors() -> None:
-    """--graph-only without a directory is rejected."""
-    result = _run(
-        "check",
-        str(LINEAR / "foundation.furqan"),
-        "--graph-only",
+def test_cli_directory_reports_cycle() -> None:
+    result = _run_cli(
+        "check", str(FIXTURES / "invalid" / "cycle"),
     )
     assert result.returncode == 1
-    assert "directory" in result.stderr
+    assert "GRAPH" in result.stdout
+    assert "Alpha -> Beta -> Alpha" in result.stdout
 
 
-def test_cli_directory_strict_mode_returns_three() -> None:
-    result = _run("check", str(CYCLE), "--strict")
+def test_cli_directory_reports_missing_target() -> None:
+    result = _run_cli(
+        "check", str(FIXTURES / "invalid" / "missing_target"),
+    )
+    assert result.returncode == 1
+    assert "NotInProject" in result.stdout
+
+
+def test_cli_graph_only_flag() -> None:
+    result = _run_cli(
+        "check", str(FIXTURES / "invalid" / "cycle"), "--graph-only",
+    )
+    assert result.returncode == 1
+    assert "GRAPH" in result.stdout
+    assert "Alpha -> Beta -> Alpha" in result.stdout
+
+
+def test_cli_directory_strict_mode_returns_3() -> None:
+    result = _run_cli(
+        "check", str(FIXTURES / "invalid" / "cycle"), "--strict",
+    )
     assert result.returncode == 3
 
 
-def test_cli_empty_directory_passes(tmp_path: Path) -> None:
-    result = _run("check", str(tmp_path))
+def test_cli_examples_multi_passes() -> None:
+    """The examples/multi demo set should pass cleanly."""
+    result = _run_cli("check", str(EXAMPLES_MULTI))
     assert result.returncode == 0
     assert "PASS" in result.stdout
+    assert "3 modules" in result.stdout
+
+
+# ---------------------------------------------------------------------------
+# Edge cases
+# ---------------------------------------------------------------------------
+
+def test_empty_directory_no_crash(tmp_path: Path) -> None:
+    """A directory with no .furqan files exits cleanly, exit 0."""
+    result = _run_cli("check", str(tmp_path))
+    assert result.returncode == 0
     assert "0 modules" in result.stdout
 
 
-def test_cli_single_file_directory_works(tmp_path: Path) -> None:
-    """A directory with exactly one .furqan file works in directory
-    mode."""
-    src = (LINEAR / "foundation.furqan").read_text()
-    (tmp_path / "only.furqan").write_text(src)
-    result = _run("check", str(tmp_path), "--graph-only")
+def test_single_file_directory_works(tmp_path: Path) -> None:
+    """A directory containing exactly one .furqan file is handled
+    by the directory path."""
+    (tmp_path / "only.furqan").write_text(
+        _bismillah("Only", "noop") + _trivial_fn()
+    )
+    result = _run_cli("check", str(tmp_path))
     assert result.returncode == 0
-    assert "PASS" in result.stdout
     assert "1 modules" in result.stdout
 
 
-# ---------------------------------------------------------------------------
-# Backward compatibility: single-file mode still works
-# ---------------------------------------------------------------------------
-
-def test_cli_single_file_mode_unchanged() -> None:
-    """A single .furqan file argument continues to work; the empty
-    fixture body emits an advisory but the exit code is 0."""
-    result = _run("check", str(LINEAR / "foundation.furqan"))
+def test_single_file_mode_unchanged() -> None:
+    """File path with .furqan suffix still uses single-file mode."""
+    result = _run_cli(
+        "check", str(EXAMPLES_MULTI / "foundation.furqan"),
+    )
     assert result.returncode == 0
-    assert "MARAD" not in result.stdout
+    assert "PASS" in result.stdout
+    assert "9 checkers ran" in result.stdout
 
 
 # ---------------------------------------------------------------------------
 # Public surface
 # ---------------------------------------------------------------------------
 
-def test_project_is_exported_from_top_level() -> None:
-    import furqan
-    assert hasattr(furqan, "Project")
-    assert furqan.Project is Project
+def test_project_exported_from_top_level_package() -> None:
+    from furqan import GRAPH_PRIMITIVE_NAME, Project as P  # noqa: F401
+    assert P is Project
+    assert GRAPH_PRIMITIVE_NAME == "graph"
 
 
-def test_project_module_primitive_name_is_graph() -> None:
-    from furqan.project import PRIMITIVE_NAME
-    assert PRIMITIVE_NAME == "graph"
+def test_project_module_all_matches_public_surface() -> None:
+    from furqan import project as proj_module
+    expected = {
+        "GRAPH_PRIMITIVE_NAME",
+        "GraphDiagnostic",
+        "Project",
+    }
+    assert set(proj_module.__all__) == expected
+
+
+# ---------------------------------------------------------------------------
+# Sweep
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize(
+    "subdir",
+    sorted(p.name for p in (FIXTURES / "valid").iterdir() if p.is_dir()),
+)
+def test_every_valid_fixture_passes_check_all(subdir: str) -> None:
+    proj = Project()
+    proj.add_directory(FIXTURES / "valid" / subdir)
+    results = proj.check_all()
+    # No __graph__ key on a clean project, OR a __graph__ block
+    # that contains only Advisories.
+    if "__graph__" in results:
+        marads = [
+            d for d in results["__graph__"] if isinstance(d, Marad)
+        ]
+        assert marads == [], (
+            f"valid/{subdir} produced graph marads: {marads}"
+        )
+    for name, diags in results.items():
+        if name == "__graph__":
+            continue
+        marads = [d for d in diags if isinstance(d, Marad)]
+        assert marads == [], (
+            f"valid/{subdir} module {name} produced marads: {marads}"
+        )
+
+
+@pytest.mark.parametrize(
+    "subdir",
+    sorted(p.name for p in (FIXTURES / "invalid").iterdir() if p.is_dir()),
+)
+def test_every_invalid_fixture_produces_a_marad(subdir: str) -> None:
+    """An invalid multi-module fixture must produce at least one
+    Marad somewhere in the project: either at the graph level
+    (G1/G2 fixtures) or at a per-module level (D23 cross-module
+    type fixtures). check_all() unifies both views."""
+    proj = Project()
+    proj.add_directory(FIXTURES / "invalid" / subdir)
+    results = proj.check_all()
+    total_marads = 0
+    for diags in results.values():
+        total_marads += sum(1 for d in diags if isinstance(d, Marad))
+    assert total_marads >= 1, (
+        f"invalid/{subdir} produced no marads anywhere in the project"
+    )

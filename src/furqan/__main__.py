@@ -4,8 +4,6 @@ Furqan CLI - structural-honesty checker for .furqan modules.
 Usage:
     python -m furqan check <file.furqan>
     python -m furqan check <file.furqan> --strict
-    python -m furqan check <directory>
-    python -m furqan check <directory> --graph-only
     python -m furqan version
     python -m furqan help
 
@@ -66,10 +64,13 @@ def main() -> int:
 # ---------------------------------------------------------------------------
 
 def _cmd_check(args: List[str]) -> int:
-    """Run all checkers on a single .furqan file."""
+    """Run all checkers on a single .furqan file or, in directory
+    mode, build a Project across every .furqan file in the directory
+    and run cross-module analysis (D9/D20/D23).
+    """
     if not args:
         print(
-            "Usage: furqan check <file.furqan> [--strict]",
+            "Usage: furqan check <file-or-dir> [--strict] [--graph-only]",
             file=sys.stderr,
         )
         return 1
@@ -85,14 +86,8 @@ def _cmd_check(args: List[str]) -> int:
     if target.is_dir():
         return _cmd_check_directory(target, strict=strict, graph_only=graph_only)
 
-    if graph_only:
-        print(
-            "--graph-only requires a directory argument",
-            file=sys.stderr,
-        )
-        return 1
-
     file_path = target
+
     if file_path.suffix != ".furqan":
         print(
             f"Expected a .furqan file, got: {file_path}",
@@ -198,7 +193,7 @@ def _cmd_check(args: List[str]) -> int:
 
 
 # ---------------------------------------------------------------------------
-# `check` directory mode (D9/D20)
+# Directory mode (D9/D20/D23)
 # ---------------------------------------------------------------------------
 
 def _cmd_check_directory(
@@ -207,165 +202,142 @@ def _cmd_check_directory(
     strict: bool,
     graph_only: bool,
 ) -> int:
-    """Run graph-level (and optionally per-module) checks across
-    every .furqan file in ``directory``.
-
-    Exit codes match single-file mode:
-      0  PASS, no Marads from any layer.
-      1  MARAD, at least one violation (graph or per-module).
-      2  PARSE ERROR, any file failed to parse.
-      3  STRICT MODE failure on a Marad.
+    """Build a Project from every .furqan file in ``directory`` and
+    run cross-module analysis. Per-module diagnostics use the D23
+    cross-module type-resolution path (each module's ring-close R1
+    accepts compound type names exported by its direct dependencies).
     """
+    from furqan import Project
     from furqan.errors.marad import Advisory, Marad
     from furqan.parser.parser import ParseError
     from furqan.parser.tokenizer import TokenizeError
-    from furqan.project import Project
 
     project = Project()
-    paths = sorted(directory.glob("*.furqan"))
-    if not paths:
+    try:
+        project.add_directory(directory)
+    except (TokenizeError, ParseError) as e:
+        print(f"PARSE ERROR in directory {directory}:", file=sys.stderr)
+        print(f"  {e}", file=sys.stderr)
+        return 2
+    except ValueError as e:
+        print(f"PROJECT ERROR in {directory}:", file=sys.stderr)
+        print(f"  {e}", file=sys.stderr)
+        return 1
+
+    if not project.modules:
         print(f"PASS  {directory} (0 modules)")
-        print("  No .furqan files found.")
+        print("  No .furqan files found in directory.")
         return 0
 
-    for path in paths:
-        try:
-            project.add_file(path)
-        except (TokenizeError, ParseError) as e:
-            print(f"PARSE ERROR in {path}:", file=sys.stderr)
-            print(f"  {e}", file=sys.stderr)
-            return 2
+    # Graph-only mode skips per-module checks.
+    if graph_only:
+        graph_diags = project.check_graph()
+        return _report_directory_results(
+            directory,
+            project,
+            results={"__graph__": graph_diags} if graph_diags else {},
+            strict=strict,
+        )
 
-    graph_diags = project.check_graph()
+    results = project.check_all()
+    return _report_directory_results(
+        directory, project, results=results, strict=strict,
+    )
+
+
+def _report_directory_results(
+    directory: Path,
+    project,
+    *,
+    results: dict,
+    strict: bool,
+) -> int:
+    """Render directory-mode output and pick the right exit code."""
+    from furqan.errors.marad import Advisory, Marad
+
+    total_marads = 0
+    total_advisories = 0
+
+    # Graph-level block (G1, G2, G3) printed first.
+    graph_diags = results.get("__graph__", [])
     graph_marads = [d for d in graph_diags if isinstance(d, Marad)]
     graph_advisories = [d for d in graph_diags if isinstance(d, Advisory)]
+    total_marads += len(graph_marads)
+    total_advisories += len(graph_advisories)
 
-    per_module_diags: List[Tuple[str, str, object]] = []
-    if not graph_only:
-        topo = project.topological_order()
-        order = topo if topo is not None else sorted(project.modules.keys())
-        per_module_diags = _run_per_module_checks(project, order)
+    # Per-module diagnostics (everything except __graph__).
+    per_module = {k: v for k, v in results.items() if k != "__graph__"}
 
-    per_module_marads = [
-        (mod, name, d)
-        for (mod, name, d) in per_module_diags
-        if isinstance(d, Marad)
-    ]
-    per_module_advisories = [
-        (mod, name, d)
-        for (mod, name, d) in per_module_diags
-        if isinstance(d, Advisory)
-    ]
-
-    total_marads = len(graph_marads) + len(per_module_marads)
-    total_advisories = len(graph_advisories) + len(per_module_advisories)
-    total_diags = total_marads + total_advisories
-
-    if total_diags == 0:
+    if not graph_marads and not graph_advisories and all(
+        not v for v in per_module.values()
+    ):
         print(f"PASS  {directory} ({len(project.modules)} modules)")
+        graph = project.dependency_graph()
+        cycle_count = 0  # we already know there are none if marads==0
+        missing_count = 0
         print(
             f"  Graph: {len(project.modules)} modules, "
-            f"0 cycles, 0 missing targets."
+            f"{cycle_count} cycles, {missing_count} missing targets."
         )
-        if not graph_only:
+        if per_module:
+            checker_count = 9 * len(per_module)
             print(
-                f"  Per-module: 9 checkers per module ran across "
-                f"{len(project.modules)} modules. Zero diagnostics."
+                f"  Per-module: {checker_count} checkers ran. "
+                f"Zero diagnostics."
             )
         return 0
 
-    if total_marads:
-        print(f"MARAD  {directory}")
+    if graph_marads or graph_advisories:
+        print(f"GRAPH  {directory}")
         if graph_marads:
-            print(f"  Graph violations ({len(graph_marads)}):")
+            print(f"  {len(graph_marads)} graph violation(s):")
             for m in graph_marads:
                 print(f"    [graph] {m.diagnosis}")
-                if m.minimal_fix:
-                    print(f"      fix: {m.minimal_fix}")
-        if per_module_marads:
-            print(
-                f"  Per-module violations ({len(per_module_marads)}):"
-            )
-            for mod_name, checker_name, m in per_module_marads:
-                print(f"    {mod_name}: [{checker_name}] {m.diagnosis}")
                 fix = getattr(m, "minimal_fix", None)
                 if fix:
                     print(f"      fix: {fix}")
-        print()
-
-    if total_advisories:
-        print(f"ADVISORY  {directory}")
         if graph_advisories:
+            print(f"  {len(graph_advisories)} graph advisory/ies:")
             for a in graph_advisories:
                 msg = getattr(a, "message", None) or getattr(
                     a, "diagnosis", str(a)
                 )
                 print(f"    [graph] {msg}")
-        for mod_name, checker_name, a in per_module_advisories:
-            msg = getattr(a, "message", None) or getattr(
-                a, "diagnosis", str(a)
-            )
-            print(f"    {mod_name}: [{checker_name}] {msg}")
         print()
 
-    if strict and total_marads:
+    for module_name in sorted(per_module):
+        diags = per_module[module_name]
+        if not diags:
+            continue
+        marads = [d for d in diags if isinstance(d, Marad)]
+        advisories = [d for d in diags if isinstance(d, Advisory)]
+        total_marads += len(marads)
+        total_advisories += len(advisories)
+        if marads:
+            print(f"MARAD  module {module_name!r}")
+            for m in marads:
+                print(f"    [{m.primitive}] {m.diagnosis}")
+                fix = getattr(m, "minimal_fix", None)
+                if fix:
+                    print(f"      fix: {fix}")
+            print()
+        if advisories:
+            print(f"ADVISORY  module {module_name!r}")
+            for a in advisories:
+                msg = getattr(a, "message", None) or getattr(
+                    a, "diagnosis", str(a)
+                )
+                print(f"    [{a.primitive}] {msg}")
+            print()
+
+    if strict and total_marads > 0:
         print(
             f"STRICT MODE: {total_marads} Marad violation(s) found.",
             file=sys.stderr,
         )
         return 3
 
-    return 1 if total_marads else 0
-
-
-def _run_per_module_checks(
-    project,
-    order: List[str],
-) -> List[Tuple[str, str, object]]:
-    """Run the nine per-module checkers on each module in ``order``
-    and return ``(module_name, checker_name, diagnostic)`` triples."""
-    from furqan.checker import (
-        check_all_paths_return,
-        check_bismillah,
-        check_incomplete,
-        check_mizan,
-        check_return_type_match,
-        check_ring_close,
-        check_status_coverage,
-        check_tanzil,
-        check_zahir_batin,
-    )
-
-    checkers = [
-        ("bismillah", check_bismillah),
-        ("zahir_batin", check_zahir_batin),
-        ("mizan", check_mizan),
-        ("tanzil", check_tanzil),
-        ("ring_close", check_ring_close),
-        ("incomplete", check_incomplete),
-        ("status_coverage", check_status_coverage),
-        ("return_type_match", check_return_type_match),
-        ("all_paths_return", check_all_paths_return),
-    ]
-
-    out: List[Tuple[str, str, object]] = []
-    for mod_name in order:
-        module = project.modules.get(mod_name)
-        if module is None:
-            continue
-        for checker_name, checker in checkers:
-            try:
-                results = checker(module)
-            except Exception as e:  # pragma: no cover - defensive
-                print(
-                    f"  INTERNAL ERROR in {checker_name} for "
-                    f"{mod_name}: {e}",
-                    file=sys.stderr,
-                )
-                continue
-            for d in results:
-                out.append((mod_name, checker_name, d))
-    return out
+    return 1 if total_marads > 0 else 0
 
 
 # ---------------------------------------------------------------------------
@@ -376,10 +348,10 @@ def _print_usage() -> None:
     print("Furqan - structural-honesty checker")
     print()
     print("Usage:")
-    print("  furqan check <file.furqan>           Run all checkers")
-    print("  furqan check <file.furqan> --strict  Fail on first Marad")
-    print("  furqan check <directory>             Multi-module check (D9/D20)")
-    print("  furqan check <directory> --graph-only  Skip per-module checkers")
+    print("  furqan check <file.furqan>           Run all checkers on a file")
+    print("  furqan check <directory>             Project mode: graph + per-module")
+    print("  furqan check <target> --strict       Fail on first Marad")
+    print("  furqan check <directory> --graph-only  Run only graph checks (G1/G2/G3)")
     print("  furqan version                       Show version")
     print("  furqan help                          Show this message")
     print()

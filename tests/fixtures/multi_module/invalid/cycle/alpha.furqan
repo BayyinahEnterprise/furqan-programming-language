@@ -1,12 +1,12 @@
-bismillah LCA {
+bismillah Alpha {
     authority: NAMING_MD
     serves: purpose_hierarchy.balance_for_living_systems
     scope: first
     not_scope: nothing_excluded
 }
 
-tanzil a_deps {
-    depends_on: LCB
+tanzil alpha_deps {
+    depends_on: Beta
 }
 
 fn placeholder() -> Integrity {

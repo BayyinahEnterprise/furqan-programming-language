@@ -1,12 +1,14 @@
-// D9/D20 diamond fixture, side C. Depends on D.
-
 bismillah C {
     authority: NAMING_MD
     serves: purpose_hierarchy.balance_for_living_systems
-    scope: side_c
+    scope: right
     not_scope: nothing_excluded
 }
 
 tanzil c_deps {
     depends_on: D
+}
+
+fn placeholder() -> Integrity {
+    return Integrity
 }

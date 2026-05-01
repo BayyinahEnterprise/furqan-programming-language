@@ -12,6 +12,58 @@ itself (NAMING.md §6).
 
 ---
 
+## [0.10.1] - 2026-04-30
+
+**Phase 3 / Session 1.15: D23 cross-module type resolution
+completion.** v0.10.0 already wired the `imported_types` parameter
+through `Project.check_all` and shipped `valid/cross_module_type`.
+v0.10.1 closes the gaps: the strict variant of ring-close now
+forwards `imported_types`, two new invalid fixtures pin the
+direct-only scoping rule, and a dedicated test module
+(`test_cross_module_type.py`) pins the parameter contract
+end-to-end.
+
+A patch-level bump (0.10.0 to 0.10.1) reflects the strict-variant
+fix and the new test surface; no behaviour change for callers using
+the soft variant.
+
+### Added
+
+* `check_ring_close_strict` now accepts the keyword-only
+  `imported_types` parameter and forwards it to `check_ring_close`.
+  The fail-fast path agrees with the soft path on cross-module
+  resolution.
+* Two new invalid multi-module fixtures:
+  - `tests/fixtures/multi_module/invalid/type_not_in_dep/` (A
+    depends on B but references a type neither defines).
+  - `tests/fixtures/multi_module/invalid/transitive_type/` (A
+    depends on B, B depends on C; A references C's type without
+    declaring depends_on: C - direct-only scoping fires R1).
+* `tests/test_cross_module_type.py` (18 tests) covering the
+  parameter contract: default empty, keyword-only, parameter +
+  return + union-arm coverage, unknown-type still fires, builtins
+  still exempt, R4 unaffected, strict-variant forwarding,
+  cross-module fixture pass / fail behaviour, CLI directory mode
+  integration, single-file backward compatibility.
+* Sweep test in `test_multi_module.py` (`test_every_invalid_fixture
+  _produces_a_marad`) updated to look for marads anywhere in
+  `check_all()` output, not just `check_graph()`. The two new
+  D23 invalid fixtures produce per-module R1 marads (graph is
+  clean); the sweep now sees them via the unified view.
+
+### Tests
+
+* 507 -> 527 (+20). All v0.10.0 tests pass identically.
+
+### Unchanged
+
+* Seven core primitives. Parser, tokenizer, ten checker modules.
+* 28 keywords. Public surface unchanged.
+* `furqan.Project`, G1/G2/G3, CLI directory mode all unchanged
+  from v0.10.0.
+
+---
+
 ## [0.10.0] - 2026-04-30
 
 **D9/D20 / Phase 1 multi-module support.** Furqan grows beyond

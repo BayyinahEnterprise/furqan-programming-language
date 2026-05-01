@@ -1,12 +1,12 @@
-bismillah LCA {
+bismillah DemoLoader {
     authority: NAMING_MD
     serves: purpose_hierarchy.balance_for_living_systems
-    scope: first
+    scope: load
     not_scope: nothing_excluded
 }
 
-tanzil a_deps {
-    depends_on: LCB
+tanzil loader_deps {
+    depends_on: DemoFoundation
 }
 
 fn placeholder() -> Integrity {

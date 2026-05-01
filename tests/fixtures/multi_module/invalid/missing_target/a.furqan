@@ -1,12 +1,14 @@
-// D9/D20 G1 fixture. A depends on B, but B is not in the directory.
-
 bismillah A {
     authority: NAMING_MD
     serves: purpose_hierarchy.balance_for_living_systems
-    scope: depends_on_missing
+    scope: scan
     not_scope: nothing_excluded
 }
 
 tanzil a_deps {
-    depends_on: B
+    depends_on: NotInProject
+}
+
+fn placeholder() -> Integrity {
+    return Integrity
 }

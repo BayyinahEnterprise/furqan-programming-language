@@ -1,22 +1,22 @@
 """
-Marad error type, diagnosis-structured errors (Furqan thesis §3.7).
+Marad error type — diagnosis-structured errors (Furqan thesis §3.7).
 
 Per the thesis, an error in Furqan is not a thrown exception with a
 free-form string. It is a structured *diagnosis* with four required
-fields. The discipline treats performed alignment as a disease
-(marad), not a betrayal (khiyana). A disease is diagnosed, treated
-minimally, and verified as recovered.
+fields. The discipline derives from Al-Baqarah 2:10: performed
+alignment is treated as a disease (marad), not a betrayal (khiyana).
+A disease is diagnosed, treated minimally, and verified as recovered.
 A betrayal is punished with a rewrite. Ninety-nine percent of bugs
 are diseases; the rewrite-on-error reflex causes more regressions
 than it prevents.
 
 The four required fields per thesis §3.7 and NAMING.md §5:
 
-* ``diagnosis``: what specifically went wrong (one sentence,
+* ``diagnosis``       — what specifically went wrong (one sentence,
                         no jargon)
-* ``location``: where in the source the failure was detected
-* ``minimal_fix``: the smallest change that would resolve it
-* ``regression_check``: what the user should run to verify the fix
+* ``location``        — where in the source the failure was detected
+* ``minimal_fix``     — the smallest change that would resolve it
+* ``regression_check``— what the user should run to verify the fix
                         did not break adjacent rules
 
 Phase 2 implements ``Marad`` as a frozen dataclass that the
@@ -44,7 +44,7 @@ from furqan.parser.ast_nodes import SourceSpan
 class Marad:
     """A diagnosis-structured Furqan error.
 
-    The four fields are required at the dataclass level, a ``Marad``
+    The four fields are required at the dataclass level — a ``Marad``
     cannot be constructed without all four. This is the language-level
     structural form of the discipline; a checker that wants to skip
     any field has to construct an entirely different value, which
@@ -84,7 +84,7 @@ class Marad:
 
 
 # ---------------------------------------------------------------------------
-# MaradError, the exception wrapper
+# MaradError — the exception wrapper
 # ---------------------------------------------------------------------------
 
 class MaradError(Exception):
@@ -149,7 +149,7 @@ __all__: Final[list[str]] = [
 
 
 # ---------------------------------------------------------------------------
-# Advisory, informational diagnostic, distinct from Marad
+# Advisory — informational diagnostic, distinct from Marad
 # ---------------------------------------------------------------------------
 #
 # Session 1.1 (D1) registered the design question: should the Marad
@@ -159,8 +159,8 @@ __all__: Final[list[str]] = [
 #
 # Rationale:
 #
-#   * Clean separation. A ``Marad`` is an error, the program does not
-#     type-check. An ``Advisory`` is a hint, the program is structurally
+#   * Clean separation. A ``Marad`` is an error — the program does not
+#     type-check. An ``Advisory`` is a hint — the program is structurally
 #     accepted, but the developer might want to reconsider. Conflating
 #     the two on a single ``tier`` field would make every consumer
 #     branch on the field; separate types give us the discrimination
@@ -168,7 +168,7 @@ __all__: Final[list[str]] = [
 #
 #   * Additive-only safety. ``Marad``'s shape is unchanged across
 #     versions; existing diagnostics retain their contract. The
-#     advisory surface is purely additive, Phase-2.4 callers that
+#     advisory surface is purely additive — Phase-2.4 callers that
 #     read marads only continue to work.
 #
 #   * Reflexivity. The framework's own thesis says: do not mix levels

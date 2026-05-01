@@ -1,8 +1,8 @@
 """
-Furqan AST nodes, Phase 2 minimal surface syntax.
+Furqan AST nodes — Phase 2 minimal surface syntax.
 
 Every node is a frozen dataclass. The AST is immutable by construction
-, a checker pass walks but never mutates. This is the structural form
+— a checker pass walks but never mutates. This is the structural form
 of the additive-only invariant applied to the AST itself: a checker
 that mutates the tree is by definition operating on a different tree
 than the one it was given, breaking the surface/depth correspondence
@@ -10,18 +10,18 @@ the language is built to enforce.
 
 Node set (Phase 2.2):
 
-* :class:`Module`: the top-level translation unit; a list of
+* :class:`Module`         — the top-level translation unit; a list of
                             top-level items (Bismillah blocks and
                             function definitions) plus the source-file
                             path.
-* :class:`BismillahBlock`: the four-field Bismillah declaration.
-* :class:`FunctionDef`: a function definition, with a list of call
+* :class:`BismillahBlock` — the four-field Bismillah declaration.
+* :class:`FunctionDef`    — a function definition, with a list of call
                             references encountered in its body. Phase
                             2 does not parse expressions; the body is
                             modelled as the set of qualified names
                             invoked, which is what the Bismillah scope
                             checker needs.
-* :class:`CallRef`: a single call site: a qualified name path
+* :class:`CallRef`        — a single call site: a qualified name path
                             (e.g. ``parse_files`` or ``stdlib.io.read``)
                             with the location at which it was found.
 
@@ -80,7 +80,7 @@ class CallRef:
 
     @property
     def head(self) -> str:
-        """First component of the call path, the symbol the checker
+        """First component of the call path — the symbol the checker
         compares against ``not_scope``."""
         return self.path[0]
 
@@ -100,15 +100,15 @@ class BismillahBlock:
 
     Per Furqan thesis §3.1, every module opens with four fields:
 
-    * ``authority``: the standards or contracts that govern this unit.
-    * ``serves``: the level of the purpose hierarchy plus the
+    * ``authority`` — the standards or contracts that govern this unit.
+    * ``serves``    — the level of the purpose hierarchy plus the
                       specific objective. Phase 2 records this as the
                       raw qualified-name path (e.g. ``purpose_hierarchy
                       .truth_over_falsehood``); the Mizan-aware checker
                       in a later session will validate the hierarchy
                       reference.
-    * ``scope``: operations permitted inside this module.
-    * ``not_scope``: operations explicitly excluded. The Bismillah
+    * ``scope``     — operations permitted inside this module.
+    * ``not_scope`` — operations explicitly excluded. The Bismillah
                       scope checker (this session's deliverable) is
                       responsible for verifying that no call site in the
                       module body invokes a head identifier listed here.
@@ -141,11 +141,11 @@ class FunctionDef:
     a tuple of :class:`CallRef`. Phase 2.4 (Session 1.3) extends the
     node additively with three new fields:
 
-    * ``params``: typed parameter declarations (was opaquely
+    * ``params``     — typed parameter declarations (was opaquely
                        consumed pre-2.4; replaces F1 from Session 1.2)
-    * ``return_type``: optional :class:`TypePath` after ``->`` (replaces
+    * ``return_type``— optional :class:`TypePath` after ``->`` (replaces
                        F2 from Session 1.2)
-    * ``accesses``: :class:`LayerAccess` records pre-scanned from
+    * ``accesses``   — :class:`LayerAccess` records pre-scanned from
                        the body's call-argument lists; the input to the
                        zahir/batin checker
 
@@ -158,7 +158,7 @@ class FunctionDef:
     name: str
     calls: tuple[CallRef, ...]
     span: SourceSpan
-    # Phase 2.4 additive extensions, ``()`` and ``None`` defaults
+    # Phase 2.4 additive extensions — ``()`` and ``None`` defaults
     # preserve the v0.1.x construction shape for any caller that
     # somehow still constructs FunctionDef without these fields. The
     # parser is the only constructor in practice and always passes
@@ -166,7 +166,7 @@ class FunctionDef:
     params: tuple[ParamDecl, ...] = ()
     return_type: "ReturnType | None" = None
     accesses: tuple[LayerAccess, ...] = ()
-    # Phase 2.6 additive extension, the structured statement tree.
+    # Phase 2.6 additive extension — the structured statement tree.
     # ``calls`` and ``accesses`` are derived from ``statements`` by
     # walking the tree; pre-2.6 readers continue to see identical
     # content on those fields. The scan-incomplete checker reads
@@ -175,7 +175,7 @@ class FunctionDef:
 
 
 # ---------------------------------------------------------------------------
-# Phase 2.4, zahir/batin AST surface
+# Phase 2.4 — zahir/batin AST surface
 # ---------------------------------------------------------------------------
 #
 # The four nodes below model the compound-type declaration grammar
@@ -216,7 +216,7 @@ class TypePath:
 class FieldDecl:
     """A single field inside a zahir or batin layer block.
 
-    Phase 2.4 restricts field types to bare IDENT, the type
+    Phase 2.4 restricts field types to bare IDENT — the type
     expression grammar (generics, references, function types) is a
     later-phase surface. The restriction is enforced by the parser;
     a complex type expression in a field position is a parse error,
@@ -248,7 +248,7 @@ class LayerBlock:
 class CompoundTypeDef:
     """A top-level ``type Name { zahir { ... } batin { ... } }`` block.
 
-    Phase 2.4 requires both layers to be present, a compound type
+    Phase 2.4 requires both layers to be present — a compound type
     that omits one layer is structurally degenerate (it is not a
     surface/depth distinction; it is a single-layer type and should
     use a future plain-type construct instead). Order is fixed:
@@ -288,7 +288,7 @@ class LayerAccess:
     not change the rejection contract).
 
     The first segment (``param_name``) names the value being accessed
-   , typically a function parameter, and the second (``layer``) is
+    — typically a function parameter — and the second (``layer``) is
     the canonical Arabic layer name. Anything beyond ``param.layer``
     (e.g., ``doc.zahir.rendered_text`` continues with a field name)
     is irrelevant to the checker's layer rule.
@@ -301,7 +301,7 @@ class LayerAccess:
 
 
 # ---------------------------------------------------------------------------
-# Phase 2.5, additive-only AST surface (Session 1.4)
+# Phase 2.5 — additive-only AST surface (Session 1.4)
 # ---------------------------------------------------------------------------
 #
 # The five additions below model the versioned-module declaration
@@ -379,7 +379,7 @@ class RemovesEntry:
     Each entry names exactly one symbol that the developer is
     explicitly removing from the public surface. The checker enforces
     that the named symbol (a) was present in the previous version
-    and (b) is absent from the current version (Case 4, catalog
+    and (b) is absent from the current version (Case 4 — catalog
     must not lie).
     """
 
@@ -412,7 +412,7 @@ class MajorVersionBump:
     to break the additive-only invariant declares the breakage here,
     making it visible to every downstream consumer at compile time.
 
-    An empty catalog (``major_version_bump {}``) is benign, it
+    An empty catalog (``major_version_bump {}``) is benign — it
     asserts "I have considered breaking changes and there are none."
     A catalog with entries is the load-bearing surface for Cases 1,
     2, and 4 of the additive-only checker.
@@ -443,7 +443,7 @@ class AdditiveOnlyModuleDecl:
 
 
 # ---------------------------------------------------------------------------
-# Phase 2.6, scan-incomplete AST surface (Session 1.5)
+# Phase 2.6 — scan-incomplete AST surface (Session 1.5)
 # ---------------------------------------------------------------------------
 #
 # Phase 2.6 introduces statement-level grammar in function bodies:
@@ -452,14 +452,14 @@ class AdditiveOnlyModuleDecl:
 # tuple of CallRefs because the bismillah and zahir/batin checkers
 # only needed call references and layer accesses. Phase 2.6 retains
 # both pre-existing fields (`fn.calls`, `fn.accesses`) and ADDS a
-# `fn.statements` field carrying the structured statement tree,
+# `fn.statements` field carrying the structured statement tree —
 # the new field is what the scan-incomplete checker walks.
 #
 # The pre-2.6 fields are populated by walking `statements` and
 # extracting calls/accesses recursively. Every Phase 2.3–2.5 reader
 # of `fn.calls` continues to see identical content.
 #
-# All node classes below are frozen dataclasses with slots, the
+# All node classes below are frozen dataclasses with slots — the
 # AST is immutable by construction.
 
 # --- Expressions (all forms a value can take in a return-statement) ---
@@ -539,7 +539,7 @@ class IntegrityLiteral:
     """A bare ``Integrity`` reference in expression position.
 
     Phase 2.6 does not parse the structured-record form
-    ``Integrity { score: ..., findings: ... }``, that is later-
+    ``Integrity { score: ..., findings: ... }`` — that is later-
     phase work. The bare form is sufficient for the scan-incomplete
     primitive: the checker only needs to recognise that a return
     statement produces an Integrity value, not to inspect its
@@ -575,7 +575,7 @@ class IncompleteLiteral:
     span: SourceSpan
 
 
-# Expression is a sum type (union), Python doesn't have a
+# Expression is a sum type (union) — Python doesn't have a
 # first-class sum type but the typing-level annotation lets static
 # checkers see the variants.
 #
@@ -639,7 +639,7 @@ class IfStmt:
     Phase 2.6 shipped without an else arm; Phase 3.0 (D15) lands it
     additively. The ``else_body`` field defaults to the empty tuple
     so every pre-Phase-3.0 :class:`IfStmt` construction continues to
-    succeed without modification, the additive-only invariant on
+    succeed without modification — the additive-only invariant on
     AST shape is preserved at the dataclass level.
 
     The condition is an :class:`Expression`; both bodies are tuples
@@ -659,7 +659,7 @@ class IfStmt:
     body: tuple["Statement", ...]
     span: SourceSpan
     # Phase 3.0 (D15) additive extension. Default empty tuple means
-    # "no else arm", semantically identical to the Phase 2.6 IfStmt.
+    # "no else arm" — semantically identical to the Phase 2.6 IfStmt.
     else_body: tuple["Statement", ...] = ()
 
     @property
@@ -668,7 +668,7 @@ class IfStmt:
         return isinstance(self.condition, NotExpr)
 
 
-# Statement is a sum type, same pattern as Expression.
+# Statement is a sum type — same pattern as Expression.
 Statement = CallStmt | ReturnStmt | IfStmt
 
 
@@ -683,7 +683,7 @@ class UnionType:
     unions (``A | B | C``) are not supported; if a future fixture
     requires them, the grammar can extend to a tuple of arms
     additively. ``left`` and ``right`` are :class:`TypePath`
-    nodes, the same shape Phase 2.4 zahir/batin uses for
+    nodes — the same shape Phase 2.4 zahir/batin uses for
     parameter types.
     """
 
@@ -698,12 +698,12 @@ ReturnType = TypePath | UnionType
 
 
 # ---------------------------------------------------------------------------
-# Phase 2.7, Mizan three-valued calibration AST surface (Session 1.6)
+# Phase 2.7 — Mizan three-valued calibration AST surface (Session 1.6)
 # ---------------------------------------------------------------------------
 #
 # Phase 2.7 introduces top-level `mizan` blocks for calibration
-# discipline declarations (thesis §Primitive 4). The block carries
-# three required fields:
+# discipline declarations (thesis §Primitive 4, anchored on
+# Ar-Rahman 55:7-9). The block carries three required fields:
 # la_tatghaw (do not transgress), la_tukhsiru (do not make
 # deficient), bil_qist (calibrate fairly). Phase 2.7 also adds
 # binary comparison expressions (`<`, `>`) for the bound
@@ -738,7 +738,7 @@ class BinaryComparisonExpr:
     is preserved on :attr:`op` so a future formatter can round-
     trip the source text. The grammar is non-associative: chained
     forms (``a < b < c``) are rejected at parse time, not silently
-    expanded to a Python-style transitive shape, silent expansion
+    expanded to a Python-style transitive shape — silent expansion
     would be exactly the kind of zahir/batin divergence the
     framework is built to detect.
     """
@@ -774,7 +774,7 @@ class MizanDecl:
 
     The :attr:`fields` tuple preserves source order (load-bearing
     for the M4 out-of-order check) and may contain duplicates
-    (load-bearing for the M2 duplicate check), the well-
+    (load-bearing for the M2 duplicate check) — the well-
     formedness checker is the layer that enforces those rules
     over a parsed AST.
 
@@ -790,11 +790,11 @@ class MizanDecl:
 
 
 # ---------------------------------------------------------------------------
-# Phase 2.8, Tanzil build-ordering AST surface (Session 1.7)
+# Phase 2.8 — Tanzil build-ordering AST surface (Session 1.7)
 # ---------------------------------------------------------------------------
 #
 # Phase 2.8 introduces top-level `tanzil` blocks for build-ordering
-# declarations (progressive build ordering, hence the name `tanzil`).
+# declarations (Al-Isra 17:106 — "revealed progressively, tanzilan").
 # Each block declares zero or more `depends_on:` entries, naming
 # other modules that must be built and verified before this one.
 # Phase 2.8 ships the single-module declaration surface and a
@@ -824,7 +824,7 @@ class TanzilDecl:
     """A top-level ``tanzil <Name> { depends_on: X ... }`` block.
 
     The :attr:`dependencies` tuple preserves source order (load-
-    bearing for the T2 duplicate check, first-occurrence-wins
+    bearing for the T2 duplicate check — first-occurrence-wins
     semantics require knowing which entry came first). Per Phase
     2.8 the checker operates on a single module's tanzil
     declaration; cross-module graph analysis is D9.
@@ -862,12 +862,12 @@ class Module:
     source_path: str   # the file the module was parsed from
     compound_types: tuple[CompoundTypeDef, ...] = ()
     additive_only_modules: tuple[AdditiveOnlyModuleDecl, ...] = ()
-    # Phase 2.7 additive extension, top-level Mizan calibration
+    # Phase 2.7 additive extension — top-level Mizan calibration
     # blocks. A module that declares no `mizan` blocks parses to
     # ``mizan_decls=()``; every prior field/access path on the
     # dataclass is preserved.
     mizan_decls: "tuple[MizanDecl, ...]" = ()
-    # Phase 2.8 additive extension, top-level Tanzil build-ordering
+    # Phase 2.8 additive extension — top-level Tanzil build-ordering
     # blocks. A module that declares no `tanzil` blocks parses to
     # ``tanzil_decls=()``; every prior field/access path on the
     # dataclass is preserved.
@@ -899,7 +899,7 @@ __all__: Final[list[str]] = [
     "RenamesEntry",
     "MajorVersionBump",
     "AdditiveOnlyModuleDecl",
-    # Phase 2.6 nodes (Session 1.5), scan-incomplete
+    # Phase 2.6 nodes (Session 1.5) — scan-incomplete
     "StringLiteral",
     "NumberLiteral",
     "IdentExpr",
@@ -912,12 +912,12 @@ __all__: Final[list[str]] = [
     "ReturnStmt",
     "IfStmt",
     "UnionType",
-    # Phase 2.7 nodes (Session 1.6), Mizan calibration block
+    # Phase 2.7 nodes (Session 1.6) — Mizan calibration block
     "ComparisonOp",
     "BinaryComparisonExpr",
     "MizanField",
     "MizanDecl",
-    # Phase 2.8 nodes (Session 1.7), Tanzil build-ordering
+    # Phase 2.8 nodes (Session 1.7) — Tanzil build-ordering
     "DependencyEntry",
     "TanzilDecl",
 ]
