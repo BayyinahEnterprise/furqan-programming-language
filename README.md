@@ -36,6 +36,18 @@ sub-millisecond time. It produces diagnostics that name the rule
 violated, the line it occurred on, and the minimal fix. It has
 zero runtime dependencies and no model in the loop.
 
+**Definition: "minimal fix".** A diagnostic's `minimal_fix` field
+is the smallest source edit that satisfies the checker that fired
+the diagnostic. It is local to that one checker. Other checkers
+may fire on the result. Future-checker compatibility is not
+promised by `minimal_fix` and cannot be — checkers are pure,
+additive, and may detect violations the original code did not
+expose. A stronger definition ("minimal under AST node delta,
+with a proof that no other checker fires on the result") is the
+subject of `QUESTIONS.md` Q3 and is not yet operational. Treat
+`minimal_fix` as the suggested first edit to make the diagnostic
+go away, not as a guaranteed convergence path.
+
 ## Status
 
 | # | Primitive             | Module                       | Status                                       |
