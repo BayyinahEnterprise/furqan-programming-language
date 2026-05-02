@@ -375,3 +375,211 @@ def test_status_coverage_module_all_matches_public_surface() -> None:
         "check_status_coverage_strict",
     }
     assert set(sc.__all__) == expected
+
+
+# ---------------------------------------------------------------------------
+# v0.11.0: producer_predicate parameter
+# ---------------------------------------------------------------------------
+
+def test_producer_predicate_default_uses_integrity_incomplete() -> None:
+    """Calling check_status_coverage without the parameter behaves
+    identically to the v0.10.x default: only Integrity | Incomplete
+    union returns count as producers."""
+    fixture = INVALID_DIR / "status_collapse.furqan"
+    diags_default = check_status_coverage(_load(fixture))
+    # The default must produce the same Marad set as the canonical
+    # helper would.
+    from furqan.checker.status_coverage import _is_integrity_incomplete_union
+    diags_explicit = check_status_coverage(
+        _load(fixture),
+        producer_predicate=_is_integrity_incomplete_union,
+    )
+    assert len(diags_default) == len(diags_explicit) == 1
+    assert isinstance(diags_default[0], Marad)
+    assert isinstance(diags_explicit[0], Marad)
+
+
+def test_producer_predicate_custom_function_used() -> None:
+    """A custom predicate that accepts every union return type makes
+    every union-returning function a producer. Pin that the custom
+    predicate is actually consulted, not the canonical helper."""
+    src = """
+    bismillah Custom {
+        authority: NAMING_MD
+        serves: purpose_hierarchy.balance_for_living_systems
+        scope: scan
+        not_scope: nothing_excluded
+    }
+
+    type DocA {
+        zahir { name: String }
+        batin { id: ID }
+    }
+
+    type DocB {
+        zahir { name: String }
+        batin { id: ID }
+    }
+
+    fn produce_docs() -> DocA | DocB {
+        return DocA
+    }
+
+    fn consume() -> DocA {
+        produce_docs()
+        return DocA
+    }
+    """
+    module = parse(src, file="<inline>")
+    # Without a custom predicate, no producer is detected (the
+    # union arms are not Integrity/Incomplete).
+    assert check_status_coverage(module) == []
+    # With a permissive predicate that accepts every union, the
+    # call to produce_docs becomes a producer-call and consume's
+    # bare-DocA return collapses it.
+    diags = check_status_coverage(
+        module, producer_predicate=lambda rt: True,
+    )
+    marads = [d for d in diags if isinstance(d, Marad)]
+    assert len(marads) == 1
+    assert "consume" in marads[0].diagnosis
+    assert "produce_docs" in marads[0].diagnosis
+
+
+def test_producer_predicate_keyword_only() -> None:
+    """The new parameter is keyword-only. Passing it positionally
+    raises TypeError. Pins the deliberate signature."""
+    src = """
+    bismillah X {
+        authority: NAMING_MD
+        serves: purpose_hierarchy.balance_for_living_systems
+        scope: x
+        not_scope: nothing_excluded
+    }
+
+    fn x() -> Integrity {
+        return Integrity
+    }
+    """
+    module = parse(src, file="<inline>")
+    with pytest.raises(TypeError):
+        check_status_coverage(module, lambda rt: True)  # type: ignore[misc]
+
+
+def test_producer_predicate_threads_into_check_calls() -> None:
+    """v0.11.0: the predicate must be threaded into _check_calls, not
+    just used during the producer-map build. This test sets up a
+    module where:
+
+      - Producer P returns the v0 helper's accepted shape
+        (Integrity | Incomplete) AND the custom predicate also
+        accepts it.
+      - Consumer C returns Integrity | OtherType (a union that the
+        v0 helper rejects but the custom predicate accepts as
+        'honest propagation').
+
+    Under the v0 helper, C's call to P would fire S1 (the union
+    arms aren't exactly Integrity and Incomplete). Under a custom
+    predicate that accepts both shapes, C's call to P should NOT
+    fire S1 because the per-call-site check honours the predicate.
+
+    If the predicate were threaded only at the producer-map build,
+    the per-call check would still use the canonical helper and
+    fire S1. This test fails on the half-applied bug-fix shape.
+    """
+    src = """
+    bismillah Threading {
+        authority: NAMING_MD
+        serves: purpose_hierarchy.balance_for_living_systems
+        scope: scan
+        not_scope: nothing_excluded
+    }
+
+    type OtherType {
+        zahir { name: String }
+        batin { id: ID }
+    }
+
+    fn produce() -> Integrity | Incomplete {
+        if not missing {
+            return Integrity
+        } else {
+            return Incomplete {
+                reason: "missing",
+                max_confidence: 0.5,
+                partial_findings: empty_list
+            }
+        }
+    }
+
+    fn consume() -> Integrity | OtherType {
+        produce()
+        return Integrity
+    }
+    """
+    module = parse(src, file="<inline>")
+
+    def lenient_predicate(rt) -> bool:
+        # Accept both Integrity|Incomplete AND Integrity|OtherType
+        # as 'honest propagation' shapes.
+        arms = {rt.left.base, rt.right.base}
+        return "Integrity" in arms
+
+    diags = check_status_coverage(
+        module, producer_predicate=lenient_predicate,
+    )
+    s1 = [d for d in diags if isinstance(d, Marad) and "Case S1" in d.diagnosis]
+    # If the predicate is NOT threaded into _check_calls, S1 fires
+    # because the per-call-site check still uses the canonical helper.
+    # If it IS threaded, S1 stays silent.
+    assert s1 == [], (
+        "producer_predicate is not threaded into _check_calls: the "
+        "per-call-site producer-shape check still uses the canonical "
+        "_is_integrity_incomplete_union, which makes the bug-fix "
+        "half-applied. See v0.11.0 CHANGELOG."
+    )
+
+
+def test_strict_variant_forwards_producer_predicate() -> None:
+    """The strict variant must forward the predicate. A custom
+    predicate that flags a Marad must cause the strict variant to
+    raise; without forwarding, it would silently pass."""
+    src = """
+    bismillah StrictForward {
+        authority: NAMING_MD
+        serves: purpose_hierarchy.balance_for_living_systems
+        scope: scan
+        not_scope: nothing_excluded
+    }
+
+    type DocA {
+        zahir { name: String }
+        batin { id: ID }
+    }
+
+    type DocB {
+        zahir { name: String }
+        batin { id: ID }
+    }
+
+    fn produce_docs() -> DocA | DocB {
+        return DocA
+    }
+
+    fn consume() -> DocA {
+        produce_docs()
+        return DocA
+    }
+    """
+    module = parse(src, file="<inline>")
+    # Default predicate: no producer detected, strict returns module.
+    from furqan.checker.status_coverage import check_status_coverage_strict
+    returned = check_status_coverage_strict(module)
+    assert returned is module
+    # Permissive predicate: produce_docs is a producer; consume's
+    # DocA narrowing fires S1; strict variant must raise.
+    with pytest.raises(MaradError) as exc:
+        check_status_coverage_strict(
+            module, producer_predicate=lambda rt: True,
+        )
+    assert exc.value.marad.primitive == PRIMITIVE_NAME

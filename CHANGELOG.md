@@ -12,6 +12,62 @@ itself (NAMING.md §6).
 
 ---
 
+## [0.11.0] - 2026-05-02
+
+### Added
+
+- `check_status_coverage` and `check_status_coverage_strict` gain a
+  keyword-only `producer_predicate` parameter (default `None`,
+  resolves to the existing `_is_integrity_incomplete_union`). Enables
+  furqan-lint and future language adapters to supply their own
+  producer detection without monkey-patching. Threaded through
+  `_check_calls` so every internal producer detection respects the
+  caller's predicate, not just the producer-map build.
+- QUESTIONS.md Q11 (minimal-fix-as-prose contract) and Q12 (advisory
+  CLI visibility). Two additional structural-honesty questions
+  surfaced by the round-3 audit.
+- `MAX_NESTING_DEPTH = 200` constant exported from
+  `furqan.parser.parser`. Surfaces the parser's nesting limit as an
+  importable contract per Q10's first-step closure.
+- `tests/fixtures/parse_errors/deep_nest.furqan` (depth-500 torture
+  fixture) and `tests/test_parser_resource_limits.py` (6 new tests).
+
+### Fixed
+
+- Parser no longer crashes with a Python `RecursionError` on deeply
+  nested input. Nesting beyond the parser's limit
+  (`MAX_NESTING_DEPTH = 200`) now produces a structured `ParseError`
+  with exit code `2` (PARSE ERROR) instead of exit code `1` (MARAD)
+  and a 2,998-line Python traceback. Closes the discipline violation
+  identified in the round-3 audit (QUESTIONS.md Q9).
+  Belt-and-suspenders: the top-level `parse()` function also catches
+  any `RecursionError` that escapes the depth-guard and converts it
+  to `ParseError` with a `<file>:1:1` span.
+
+### Changed
+
+- `_parse_statement` and `_parse_if_statement` accept a keyword-only
+  `depth: int = 0` parameter. Each nested if-body or else-body
+  recurses at `depth + 1`, and the dispatch point in
+  `_parse_statement` raises `ParseError` when depth exceeds
+  `MAX_NESTING_DEPTH`. Internal API; default value preserves all
+  pre-existing call sites.
+
+### Tests
+
+- 527 -> 538 (+11). All v0.10.x tests pass identically.
+
+### Unchanged
+
+- Seven core primitives. Parser, tokenizer, ten checker modules
+  unchanged outside the parser-resource-limit fix.
+- 28 keywords. Public surface: parser 42, checker 38, errors 4.
+- `furqan.Project`, G1/G2/G3, CLI directory mode, D23 cross-module
+  type resolution all unchanged from v0.10.1.
+
+---
+
+
 ## [0.10.1] - 2026-04-30
 
 **Phase 3 / Session 1.15: D23 cross-module type resolution

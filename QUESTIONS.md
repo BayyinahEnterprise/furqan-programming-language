@@ -77,6 +77,22 @@ Follow-on from Q9. The parser inherits Python's default recursion limit (1000) a
 
 Q10 is whether the parser should publish a guaranteed minimum nesting depth (the smallest construct count it commits to accepting), and whether `_parse_block` and `_parse_expression` should be rewritten to iterative form so the depth limit becomes memory-bound rather than stack-bound. The first is a one-line README addition the day Q9 ships. The second is a multi-day refactor.
 
+### Q11. The minimal-fix contract is prose, not a transform
+
+Diagnostics carry a `minimal_fix` field. The README documents the operational definition: *"the smallest edit that satisfies the checker that fired this diagnostic. Other checkers may fire on the result."* That definition is a hint, not a guarantee, the field is an f-string-templated narrative, not an AST patch, not edit-distance-minimal in any operational sense.
+
+This is a separate question from Q3 ("minimal fix needs a metric"). Q3 asks what "minimal" means; Q11 asks whether the field name overclaims its substrate. A reader seeing `minimal_fix` reasonably expects an applied-with-confidence remedy. The substrate is closer to "suggested phrasing the user is responsible for verifying."
+
+Q11 is whether `minimal_fix` should be renamed to `suggested_fix` (or similar) to align surface and substrate. The cost of renaming is one breaking change to the diagnostic schema; the benefit is self-consistency with the project's own thesis on overclaim.
+
+### Q12. Advisory diagnostics are invisible to CI pipelines
+
+`errors/marad.py:179` defines `Advisory` as a non-fatal companion to `Marad`. The CLI catches both at `__main__.py:144` but the only exit codes today are `0` (PASS), `1` (MARAD), `2` (PARSE ERROR), `3` (STRICT FAIL). A run that produces zero Marads but one or more Advisories returns `0`, indistinguishable from a fully-clean run. CI consumers that want to gate on advisories must parse the JSON output instead of branching on exit code.
+
+Q12 is whether Furqan should add exit code `4` (ADVISORY-CLEAN) for runs with zero Marads but at least one Advisory, and whether the README should document the existence of Advisory at all (it currently does not). Adding the code is a small CLI patch; documenting the type is a paragraph in the README's Diagnostic Taxonomy section.
+
+Note the parallel to Q6's INCOMPLETE exit code question. A taxonomy of exit codes that distinguishes PASS / ADVISORY-CLEAN / INCOMPLETE / MARAD / PARSE ERROR / STRICT FAIL would let CI pipelines branch on all six diagnostic states without parsing JSON.
+
 ## Resolved
 
 (Empty. Resolved questions are appended here with the version that closed them.)

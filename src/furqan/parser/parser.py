@@ -116,6 +116,25 @@ class ParseError(Exception):
 
 
 # ---------------------------------------------------------------------------
+# Parser resource limits (Q9 / Q10 from QUESTIONS.md, closed in v0.11.0)
+# ---------------------------------------------------------------------------
+#
+# Maximum nesting depth for parse-time recursion. Conservative for
+# Python's default 1000-frame stack with several frames per parse-block
+# call, plus headroom for callers above the parser. Empirically the
+# pre-v0.11.0 implementation parsed depth=200 cleanly and crashed at
+# depth=500 with RecursionError on CPython 3.12 default settings.
+# Raising this requires raising the Python recursion limit too.
+#
+# The depth-guard turns a Python RecursionError (free-form traceback,
+# wrong exit code) into a structured ParseError with a precise line
+# number, honouring marad.py's contract that errors in Furqan are
+# structured diagnoses, not thrown exceptions with prose strings.
+# Closes the discipline violation flagged by Q9 in QUESTIONS.md.
+MAX_NESTING_DEPTH: int = 200
+
+
+# ---------------------------------------------------------------------------
 # Parser
 # ---------------------------------------------------------------------------
 
@@ -966,6 +985,8 @@ class _Parser:
         self,
         calls: list[CallRef],
         accesses: list[LayerAccess],
+        *,
+        depth: int = 0,
     ):
         """Parse a single statement at function-body scope.
 
@@ -976,15 +997,35 @@ class _Parser:
         flattened to the top level, preserving the bismillah- and
         zahir/batin-checker contracts.
 
+        ``depth`` (v0.11.0 / Q9) is the static-recursion depth-guard.
+        Each nested ``if { ... }`` increments it through
+        :meth:`_parse_if_statement`. When the depth crosses
+        :data:`MAX_NESTING_DEPTH`, a structured :class:`ParseError` is
+        raised at the current token's source span instead of letting
+        Python's recursion limit fire a free-form ``RecursionError``.
+
         Phase 2.6 statement forms:
           * ``return <expr>``        → :class:`ReturnStmt`
           * ``if <expr> { ... }``    → :class:`IfStmt`
           * ``<qual_name> ( ... )``  → :class:`CallStmt` (legacy form)
         """
+        if depth > MAX_NESTING_DEPTH:
+            tok = self.peek()
+            raise ParseError(
+                f"Nesting depth at line {tok.line} exceeds the parser "
+                f"limit ({MAX_NESTING_DEPTH}). The parser supports "
+                f"finite nesting; this input exceeds the limit. Split "
+                f"deeply nested blocks into smaller helper functions. "
+                f"(Q9: this preserves marad.py's structured-diagnosis "
+                f"contract on hostile input; the pre-v0.11.0 parser "
+                f"would have produced a Python RecursionError "
+                f"traceback at this point.)",
+                self._span(tok),
+            )
         if self.check(TokenKind.RETURN):
             return self._parse_return_statement()
         if self.check(TokenKind.IF):
-            return self._parse_if_statement(calls, accesses)
+            return self._parse_if_statement(calls, accesses, depth=depth)
         if self.check(TokenKind.IDENT):
             head_tok = self.peek()
             call, call_accesses = self._parse_call()
@@ -1009,13 +1050,20 @@ class _Parser:
         self,
         calls: list[CallRef],
         accesses: list[LayerAccess],
+        *,
+        depth: int = 0,
     ) -> IfStmt:
         head = self.expect(TokenKind.IF, "'if'")
         condition = self._parse_expression()
         self.expect(TokenKind.LBRACE, "'{' to open if-body")
         body: list = []
+        # v0.11.0 (Q9): nested statements parse at depth+1 so the
+        # depth-guard in _parse_statement fires before Python's
+        # recursion limit does.
         while not self.check(TokenKind.RBRACE, TokenKind.EOF):
-            body.append(self._parse_statement(calls, accesses))
+            body.append(
+                self._parse_statement(calls, accesses, depth=depth + 1)
+            )
         self.expect(TokenKind.RBRACE, "'}' to close if-body")
 
         # Phase 3.0 (D15) — optional else arm. The else keyword,
@@ -1029,7 +1077,9 @@ class _Parser:
             self.advance()  # consume 'else'
             self.expect(TokenKind.LBRACE, "'{' to open else-body")
             while not self.check(TokenKind.RBRACE, TokenKind.EOF):
-                else_body.append(self._parse_statement(calls, accesses))
+                else_body.append(
+                    self._parse_statement(calls, accesses, depth=depth + 1)
+                )
             self.expect(TokenKind.RBRACE, "'}' to close else-body")
 
         return IfStmt(
@@ -1437,20 +1487,43 @@ def parse(source: str, *, file: str = "<source>") -> Module:
     ``file`` is used in :class:`SourceSpan` records so diagnostics can
     cite the path. For in-memory input, ``"<source>"`` is the
     conventional placeholder.
+
+    v0.11.0 (Q9 belt-and-suspenders): any :class:`RecursionError`
+    that escapes :data:`MAX_NESTING_DEPTH`'s static guard is caught
+    here and re-raised as a structured :class:`ParseError`. The
+    static guard inside :meth:`_Parser._parse_statement` is the
+    primary defence; this catch covers any future recursive parse
+    path the depth-counter does not yet thread through. Callers see
+    a structured ``ParseError`` regardless of which guard fires.
     """
-    tokens = tokenize(source)
-    parser = _Parser(tokens=tokens, file=file)
-    module = parser.parse_module()
-    # After parsing the module the next token must be EOF — otherwise
-    # there is trailing junk we silently ignored, which would be a
-    # zahir/batin divergence on the parser itself.
-    tail = parser.peek()
-    if tail.kind is not TokenKind.EOF:
+    try:
+        tokens = tokenize(source)
+        parser = _Parser(tokens=tokens, file=file)
+        module = parser.parse_module()
+        # After parsing the module the next token must be EOF
+        # otherwise there is trailing junk we silently ignored,
+        # which would be a zahir/batin divergence on the parser
+        # itself.
+        tail = parser.peek()
+        if tail.kind is not TokenKind.EOF:
+            raise ParseError(
+                f"Unexpected trailing token {tail.lexeme!r} after the module body.",
+                parser._span(tail),
+            )
+        return module
+    except RecursionError:
         raise ParseError(
-            f"Unexpected trailing token {tail.lexeme!r} after the module body.",
-            parser._span(tail),
-        )
-    return module
+            "Input recursion exceeds the parser's stack budget. "
+            "This is a Furqan parser limit, not a grammar error: "
+            "the depth-guard at MAX_NESTING_DEPTH did not fire on "
+            "this input shape, but Python's recursion limit did. "
+            "Reduce nesting and retry. (Q9: belt-and-suspenders "
+            "conversion of RecursionError to a structured "
+            "ParseError. The static guard is the primary defence; "
+            "this catch covers parse paths the depth-counter does "
+            "not yet thread through.)",
+            SourceSpan(file=file, line=1, column=1),
+        ) from None
 
 
 __all__ = [

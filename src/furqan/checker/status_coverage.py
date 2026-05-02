@@ -70,7 +70,7 @@ What this checker does NOT do (deferred):
 
 from __future__ import annotations
 
-from typing import Iterable, Union
+from typing import Callable, Iterable, Optional, Union
 
 from furqan.checker.incomplete import (
     INCOMPLETE_TYPE_NAME,
@@ -127,24 +127,44 @@ def _format_return_type(rt: Union[TypePath, UnionType, None]) -> str:
 # Public entry points
 # ---------------------------------------------------------------------------
 
-def check_status_coverage(module: Module) -> list[StatusCoverageDiagnostic]:
+def check_status_coverage(
+    module: Module,
+    *,
+    producer_predicate: Optional[Callable[[UnionType], bool]] = None,
+) -> list[StatusCoverageDiagnostic]:
     """Run the status-coverage check over a parsed :class:`Module`.
 
     Returns a list of :class:`Marad` (Case S1) and :class:`Advisory`
     (Case S2) records. An empty list means every consumer of a
     producer in this module honestly propagates (or intentionally
     discards via S3) the ``Integrity | Incomplete`` union.
+
+    v0.11.0: ``producer_predicate`` (keyword-only, default ``None``)
+    lets callers supply a custom rule for what counts as a "producer
+    function". The default ``None`` resolves to the canonical
+    :func:`_is_integrity_incomplete_union` (the
+    ``Integrity | Incomplete`` shape). Language adapters such as
+    furqan-lint pass their own predicate (for example, "any union
+    whose arms include ``None``") so the consumer-side discipline
+    can be reused on substrate-equivalent shapes without monkey-
+    patching the canonical helper. The predicate is threaded into
+    :func:`_check_calls` so every internal producer-detection site
+    respects the caller's choice, not just the producer-map build.
     """
+    if producer_predicate is None:
+        producer_predicate = _is_integrity_incomplete_union
+
     diagnostics: list[StatusCoverageDiagnostic] = []
 
     # Build the producer map: functions in this module that return
-    # Integrity | Incomplete. Anything else is not a producer for
-    # the purposes of this check.
+    # the producer shape. The canonical Furqan shape is
+    # Integrity | Incomplete; an adapter may supply a different
+    # predicate via the keyword-only parameter above.
     producers: dict[str, FunctionDef] = {}
     for fn in module.functions:
         if (
             isinstance(fn.return_type, UnionType)
-            and _is_integrity_incomplete_union(fn.return_type)
+            and producer_predicate(fn.return_type)
         ):
             producers[fn.name] = fn
 
@@ -155,18 +175,30 @@ def check_status_coverage(module: Module) -> list[StatusCoverageDiagnostic]:
 
     # Walk every function's call sites against the producer map.
     for fn in module.functions:
-        diagnostics.extend(_check_calls(fn, producers))
+        diagnostics.extend(
+            _check_calls(fn, producers, producer_predicate)
+        )
 
     return diagnostics
 
 
-def check_status_coverage_strict(module: Module) -> Module:
+def check_status_coverage_strict(
+    module: Module,
+    *,
+    producer_predicate: Optional[Callable[[UnionType], bool]] = None,
+) -> Module:
     """Fail-fast variant: raise :class:`MaradError` on the first
     Marad. Advisories (Case S2) do NOT trigger the strict path -
     they are informational by design. Returns ``module`` unchanged
     on a clean check (for fluent-style call chaining).
+
+    v0.11.0: forwards ``producer_predicate`` to
+    :func:`check_status_coverage` so the strict path agrees with
+    the soft path on cross-substrate predicate selection.
     """
-    diagnostics = check_status_coverage(module)
+    diagnostics = check_status_coverage(
+        module, producer_predicate=producer_predicate,
+    )
     for d in diagnostics:
         if isinstance(d, Marad):
             raise MaradError(d)
@@ -180,6 +212,7 @@ def check_status_coverage_strict(module: Module) -> Module:
 def _check_calls(
     fn: FunctionDef,
     producers: dict[str, FunctionDef],
+    producer_predicate: Callable[[UnionType], bool],
 ) -> Iterable[StatusCoverageDiagnostic]:
     """Yield S1/S2 diagnostics for every call in ``fn`` that targets
     a producer in the same module.
@@ -188,6 +221,13 @@ def _check_calls(
     and ``fn``'s return type is bare-Integrity, S1 fires twice
     (once per call site), so the developer sees every offending
     location. Same discipline as Tanzil T1.
+
+    v0.11.0: ``producer_predicate`` is threaded in so the per-call-
+    site producer-shape check honours the caller's predicate. The
+    public entry point passes either the canonical
+    :func:`_is_integrity_incomplete_union` or a custom predicate
+    supplied by an adapter (for example, furqan-lint's
+    ``Optional[X]`` detector).
     """
     for call in fn.calls:
         if call.head not in producers:
@@ -204,13 +244,12 @@ def _check_calls(
             continue
 
         if isinstance(fn.return_type, UnionType):
-            if _is_integrity_incomplete_union(fn.return_type):
+            if producer_predicate(fn.return_type):
                 # S3: honest propagation. No diagnostic.
                 continue
-            # A union whose arms are not exactly Integrity and
-            # Incomplete is still a collapse - the caller has
-            # narrowed away the possibility of the producer's
-            # incompleteness.
+            # A union whose arms do not match the producer predicate
+            # is still a collapse - the caller has narrowed away
+            # the possibility of the producer's incompleteness.
             yield _s1_collapse_marad(fn, call, producer)
             continue
 
