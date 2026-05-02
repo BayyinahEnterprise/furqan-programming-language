@@ -50,15 +50,18 @@ zero runtime dependencies and no model in the loop.
 | + | Status-coverage (D11) | `checker/status_coverage.py` | **Shipped** (Session 1.10, v0.8.0)          |
 | + | Return-type match (D22)| `checker/return_type_match.py`| **Shipped** (Session 1.11, v0.8.1)         |
 | + | All-paths-return (D24)| `checker/all_paths_return.py`| **Shipped** (Session 1.12, v0.8.2)          |
+| + | CLI entry point       | `__main__.py`                | **Shipped** (Session 1.13, v0.8.3)          |
+| + | Multi-module graph (D9/D20)| `project.py`            | **Shipped** (Session 1.14, v0.10.0)         |
+| + | Cross-module type resolution (D23)| `checker/ring_close.py` (Project)| **Shipped** (Session 1.15, v0.10.1) |
 
-**Seven of seven primitives shipped, the ring is closed.** Each row corresponds to a single
+**Seven of seven primitives shipped, the ring is closed; multi-module graph (D9 / D20) and cross-module type resolution (D23) shipped on top.** Each row corresponds to a single
 closing `HANDOFF.md` block; each version corresponds to a
 `CHANGELOG.md` minor-version bump that registers the source-language
 additions.
 
 ## Verified state
 
-* 495 tests passing in ~3 seconds on Python 3.10+
+* 527 tests passing in ~3 seconds on Python 3.10+
 * Zero runtime dependencies, Python standard library only
 * Public surface 42 / 38 / 4 (parser / checker / errors), plus `furqan.Project` for multi-module analysis (D9/D20). Additive-only invariant held since v0.1.0
 * Eight sessions, eight closing audits, zero open findings under the Munafiq Protocol cross-verification across three AI collaborators (Anthropic Claude, xAI Grok, Perplexity Computer)
@@ -66,10 +69,10 @@ additions.
 ## Quickstart
 
 ```bash
-git clone https://github.com/BayyinahEnterprise/furqan.git
-cd furqan
+git clone https://github.com/BayyinahEnterprise/furqan-programming-language.git
+cd furqan-programming-language
 pip install -e .
-python -m pytest        # 495 passing in ~3s
+python -m pytest        # 527 passing in ~3s
 ```
 
 The library:
@@ -169,13 +172,21 @@ src/furqan/
 │   ├── parser.py          strict recursive-descent; F1/F2 (no opaque eaters)
 │   └── ast_nodes.py       frozen dataclasses for every parsed shape
 ├── checker/
-│   ├── bismillah.py       Primitive 1, purpose-hierarchy / scope discipline
-│   ├── zahir_batin.py     Primitive 2, surface vs depth layer separation
-│   ├── additive.py        Primitive 3, module evolution; sidecar history
-│   ├── incomplete.py      Primitive 4, scan-incomplete; the demo target
-│   └── mizan.py           Primitive 5, three-valued calibration blocks
+│   ├── bismillah.py            Primitive 1, purpose-hierarchy / scope discipline
+│   ├── zahir_batin.py          Primitive 2, surface vs depth layer separation
+│   ├── additive.py             Primitive 3, module evolution; sidecar history
+│   ├── incomplete.py           Primitive 4, scan-incomplete; the demo target
+│   ├── mizan.py                Primitive 5, three-valued calibration blocks
+│   ├── tanzil.py               Primitive 6, build-ordering discipline
+│   ├── ring_close.py           Primitive 7, ring closure / type-resolution
+│   ├── status_coverage.py      D-extension D11, status-coverage propagation
+│   ├── return_type_match.py    D-extension D22, return-type match
+│   └── all_paths_return.py     D-extension D24, all-paths-return
+├── project.py                  D9 / D20 multi-module graph; cross-module analysis
+├── __main__.py                 CLI entry point: furqan check / version
+├── types/                      shared type model (used by ring_close, return_type_match)
 └── errors/
-    └── marad.py           diagnostic record: diagnosis, location, fix, regression check
+    └── marad.py                diagnostic record: diagnosis, location, fix, regression check
 ```
 
 Every checker is a pure function over a parsed `Module` AST. Every
@@ -210,11 +221,11 @@ paper's references section.
 * Not a full compiler. This is a type-checker over a minimal surface syntax. Code generation, runtime, and FFI are out of scope for Phase 2.
 * Not a static analyzer for an existing language. Furqan is a new source language with its own grammar; the checker operates on `.fqn` files, not on Python or any other host language.
 * Not an LLM, not an LLM wrapper, not a prompt-engineering toolkit. No model is invoked at any point in the parser or checker. The thesis claim is about language design, not model behaviour.
-* Not a finished system. The seven Phase 2 compile-time primitives are shipped, sub-millisecond, audit-clean, and demo-ready; what remains is the Phase 3 runtime evaluator and cross-module graph (D9, D20, D23). The full thesis is not yet executable end-to-end at runtime.
+* Not a finished system. The seven Phase 2 compile-time primitives plus the Phase 3 multi-module graph (D9 / D20 in v0.10.0, D23 cross-module type resolution in v0.10.1) are shipped, sub-millisecond, audit-clean, and demo-ready. What remains is the Phase 3 runtime evaluator and cross-module status-coverage propagation. The full thesis is not yet executable end-to-end at runtime.
 
 ## Honest registers
 
-* Test count is N=334 paired fixtures + property tests + named-rule tests + a seven-primitive integration capstone + Phase 3.0 polish (else arm, string escapes, structured tokenize errors); not a formal proof. Falsifying a primitive requires a fixture that escapes the rule's intent. The known limitations for each checker are documented in `docs/internals/CHECKER.md`.
+* Test count is N=527 paired fixtures + property tests + named-rule tests + a seven-primitive integration capstone + Phase 3 polish (else arm, string escapes, structured tokenize errors) + the D9 / D20 / D23 multi-module suites; not a formal proof. Falsifying a primitive requires a fixture that escapes the rule's intent. The known limitations for each checker are documented in `docs/internals/CHECKER.md`.
 * The cross-model audit's null-finding rate has held at zero across seven sessions and seven primitives. This is N=1 in the program's own hands; whether the methodology generalizes is a future-work question.
 * The demo's three-vendor capture is N=1 per vendor at fixed timestamps on free-tier UI. Vendor behaviour drifts across model versions and account tiers; the captures are pinned to the timestamps recorded in `demo/before/responses/*.md`.
 
@@ -239,9 +250,9 @@ If you use Furqan in academic work:
   author    = {Arfeen, Bilal Syed and Ashraf, Fraz},
   title     = {Furqan: A Programming-Language Type-Checker for Structural Honesty},
   year      = {2026},
-  version   = {0.10.0},
+  version   = {0.10.1},
   publisher = {Zenodo},
   doi       = {10.5281/zenodo.19750529},
-  url       = {https://github.com/BayyinahEnterprise/furqan}
+  url       = {https://github.com/BayyinahEnterprise/furqan-programming-language}
 }
 ```
