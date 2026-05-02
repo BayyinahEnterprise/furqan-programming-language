@@ -26,7 +26,7 @@ from __future__ import annotations
 # imported from a source tree without an installed distribution.
 # Version-bump procedure: change pyproject.toml AND this literal in
 # the same commit; the post-bump audit confirms the two agree.
-__version__: str = "0.11.0"
+__version__: str = "0.11.1"
 
 try:
     # When the package is installed (the normal case for end users),

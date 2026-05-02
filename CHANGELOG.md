@@ -12,6 +12,60 @@ itself (NAMING.md §6).
 
 ---
 
+## [0.11.1] - 2026-05-02
+
+### Added
+
+- `MAX_NESTING_DEPTH` re-exported from `furqan.parser` (the public
+  package surface), not only from `furqan.parser.parser`. A
+  user-facing contract should be importable from the surface a user
+  reaches for first. Added to `furqan.parser.__all__`. Closes the
+  surface gap in Q10's first-step closure surfaced by the round-five
+  audit.
+- README "Resource limits" section documenting the parser's
+  guaranteed minimum nesting depth (`MAX_NESTING_DEPTH = 200`), the
+  exit code on overflow (`2` PARSE ERROR), and the importable
+  constant. The one-line README addition Q10 said should land the
+  day Q9 ships.
+- `tests/test_parser_resource_limits.py` gains
+  `test_max_nesting_depth_is_re_exported_at_package_surface` (+1
+  test) pinning the package-level re-export and `__all__`
+  membership.
+
+### Fixed
+
+- `QUESTIONS.md` discipline: Q9 moved from Open to Resolved with
+  the version that closed it (`v0.11.0`), commit SHA, and the
+  list of mechanisms that closed it. The empty `## Resolved`
+  section that shipped in v0.11.0 was the exact failure mode
+  QUESTIONS.md exists to prevent (surface and substrate out of
+  sync). Q10's body updated with first-step status referencing
+  the v0.11.1 surface fixes.
+- `SECURITY.md` supported-versions table rephrased from
+  enumerated minor versions (which would go stale on every
+  release) to "latest minor on main" (additive-invariant
+  applied to the security policy).
+- README's "zero open findings" claim re-scoped to its actual
+  protocol (LLM cross-collaborator audit) with a pointer to
+  `QUESTIONS.md` for human-audit findings, including Q5's
+  question about the limits of LLM cross-verification itself.
+  The bracketed scope was technically accurate but read as a
+  blanket claim to a reader who did not open QUESTIONS.md.
+
+### Tests
+
+- 538 -> 539 (+1). All v0.11.0 tests pass identically.
+
+### Unchanged
+
+- Parser, tokenizer, ten checker modules, public surface counts
+  (parser 42 / checker 38 / errors 4), `furqan.Project`, G1/G2/G3,
+  CLI directory mode, D23 cross-module type resolution.
+- 28 keywords. Apache-2.0 license. SECURITY.md scope and reporting
+  procedure (only the supported-versions row rephrased).
+
+---
+
 ## [0.11.0] - 2026-05-02
 
 ### Added

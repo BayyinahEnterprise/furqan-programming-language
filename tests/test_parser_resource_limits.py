@@ -120,6 +120,24 @@ def test_max_nesting_depth_is_advertised_constant() -> None:
     assert MAX_NESTING_DEPTH > 0
 
 
+def test_max_nesting_depth_is_re_exported_at_package_surface() -> None:
+    """v0.11.1: pin that MAX_NESTING_DEPTH is importable from
+    ``furqan.parser`` (the public package surface), not only from
+    ``furqan.parser.parser`` (the inner module). A user-facing
+    contract should be importable from the surface a user reaches
+    for first. Closes the second item in Fraz round-five review.
+
+    Failure shape this catches: a future refactor removes the
+    re-export from ``furqan/parser/__init__.py`` and the constant
+    silently migrates back to inner-module-only access."""
+    import furqan.parser as parser_pkg
+    from furqan.parser import MAX_NESTING_DEPTH as pkg_constant
+    from furqan.parser.parser import MAX_NESTING_DEPTH as inner_constant
+
+    assert pkg_constant is inner_constant
+    assert "MAX_NESTING_DEPTH" in parser_pkg.__all__
+
+
 # ---------------------------------------------------------------------------
 # CLI exit-code contract (Q9)
 # ---------------------------------------------------------------------------

@@ -50,7 +50,7 @@ from .ast_nodes import (
     DependencyEntry,
     TanzilDecl,
 )
-from .parser import ParseError, parse
+from .parser import MAX_NESTING_DEPTH, ParseError, parse
 from .tokenizer import (
     KEYWORDS,
     Token,
@@ -108,6 +108,7 @@ __all__ = [
     "DependencyEntry",
     "TanzilDecl",
     # Parser surface
+    "MAX_NESTING_DEPTH",
     "ParseError",
     "parse",
 ]

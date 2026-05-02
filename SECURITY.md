@@ -5,10 +5,10 @@
 The latest tagged release on `main` is the supported version. Older tags
 are kept for reproducibility of cited results and are not patched.
 
-| Version | Supported |
-|---------|-----------|
-| 0.10.x  | yes       |
-| < 0.10  | no        |
+| Version              | Supported |
+|----------------------|-----------|
+| Latest minor on main | yes       |
+| All earlier versions | no        |
 
 ## Reporting a vulnerability
 

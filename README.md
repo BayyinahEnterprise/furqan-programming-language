@@ -73,10 +73,20 @@ additions.
 
 ## Verified state
 
-* 538 tests passing in ~3 seconds on Python 3.10+
+* 539 tests passing in ~3 seconds on Python 3.10+
 * Zero runtime dependencies, Python standard library only
 * Public surface 42 / 38 / 4 (parser / checker / errors), plus `furqan.Project` for multi-module analysis (D9/D20). Additive-only invariant held since v0.1.0
-* Eight sessions, eight closing audits, zero open findings under the Munafiq Protocol cross-verification across three AI collaborators (Anthropic Claude, xAI Grok, Perplexity Computer)
+* Eight sessions, eight LLM-cross-collaborator closing audits, zero findings within that protocol (Anthropic Claude, xAI Grok, Perplexity Computer). See [`QUESTIONS.md`](QUESTIONS.md) for open interpretive questions registered from human audit, including one (Q5) on the limits of LLM cross-verification itself
+
+## Resource limits
+
+The parser accepts up to `MAX_NESTING_DEPTH = 200` levels of nested `if` blocks per function. Deeper inputs produce a structured `ParseError` with exit code `2` (PARSE ERROR), not a Python `RecursionError` traceback. The constant is importable from the package surface:
+
+```python
+from furqan.parser import MAX_NESTING_DEPTH  # 200
+```
+
+This closes the first step of `QUESTIONS.md` Q10. The iterative-parser refactor that would make the limit memory-bound rather than stack-bound remains open.
 
 ## Quickstart
 
@@ -84,7 +94,7 @@ additions.
 git clone https://github.com/BayyinahEnterprise/furqan-programming-language.git
 cd furqan-programming-language
 pip install -e .
-python -m pytest        # 538 passing in ~3s
+python -m pytest        # 539 passing in ~3s
 ```
 
 The library:
@@ -237,7 +247,7 @@ paper's references section.
 
 ## Honest registers
 
-* Test count is N=538 paired fixtures + property tests + named-rule tests + a seven-primitive integration capstone + Phase 3 polish (else arm, string escapes, structured tokenize errors) + the D9 / D20 / D23 multi-module suites; not a formal proof. Falsifying a primitive requires a fixture that escapes the rule's intent. The known limitations for each checker are documented in `docs/internals/CHECKER.md`.
+* Test count is N=539 paired fixtures + property tests + named-rule tests + a seven-primitive integration capstone + Phase 3 polish (else arm, string escapes, structured tokenize errors) + the D9 / D20 / D23 multi-module suites; not a formal proof. Falsifying a primitive requires a fixture that escapes the rule's intent. The known limitations for each checker are documented in `docs/internals/CHECKER.md`.
 * The cross-model audit's null-finding rate has held at zero across seven sessions and seven primitives. This is N=1 in the program's own hands; whether the methodology generalizes is a future-work question.
 * The demo's three-vendor capture is N=1 per vendor at fixed timestamps on free-tier UI. Vendor behaviour drifts across model versions and account tiers; the captures are pinned to the timestamps recorded in `demo/before/responses/*.md`.
 
@@ -262,7 +272,7 @@ If you use Furqan in academic work:
   author    = {Arfeen, Bilal Syed and Ashraf, Fraz},
   title     = {Furqan: A Programming-Language Type-Checker for Structural Honesty},
   year      = {2026},
-  version   = {0.11.0},
+  version   = {0.11.1},
   publisher = {Zenodo},
   doi       = {10.5281/zenodo.19750529},
   url       = {https://github.com/BayyinahEnterprise/furqan-programming-language}

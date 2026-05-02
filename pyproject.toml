@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "furqan"
-version = "0.11.0"
+version = "0.11.1"
 description = "A programming language type-checker enforcing structural honesty (Phase 2 prototype)."
 readme = "README.md"
 requires-python = ">=3.10"
