@@ -60,6 +60,23 @@ Same shape as Bayyinah's Q10. The Quranic vocabulary is load-bearing in the READ
 
 This is not a question about removing the framework. It is a question about whether the project's adoption ceiling is the framework's audience, and whether that is the intended ceiling.
 
+### Q9. The parser violates the language's own diagnostic discipline on hostile input
+
+Reproduced in the Fraz audit, round 3, May 2026. A `.furqan` source file with valid bismillah, valid `fn`, and an `if true { ... }` body nested 500 levels deep produces a 2,998-line Python `RecursionError` traceback to stderr and exits with code `1` (the README's MARAD code) rather than `2` (PARSE ERROR). The 500 nested `if`s parse cleanly at depth 200 and below, so the construct is grammatical; the parser's recursion stack is the binding constraint, not the grammar.
+
+Two discipline violations, compounded:
+
+1. The error category is wrong. CI consumers branching on exit code see this as "the program had a typing error" when the truth is "the parser could not reach the program."
+2. The diagnostic shape is wrong. `errors/marad.py` opens with: "An error in Furqan is not a thrown exception with a free-form string. It is a structured diagnosis with four required fields." The parser, given hostile input, emits exactly the thrown exception with a free-form string the contract forbids.
+
+This is the bootstrap problem (Q2) in concrete form: the Python implementation is not held to the rules it enforces on `.fqn` source. Q9 is closed by v0.10.2 catching `RecursionError` at the `parse(...)` boundary, converting it to a structured `parse_resource_limit` diagnostic with exit code 2, and shipping a torture fixture in `tests/fixtures/parse_errors/`. Q9 stays open until that ships.
+
+### Q10. The parser's recursion budget is a silent contract with users
+
+Follow-on from Q9. The parser inherits Python's default recursion limit (1000) and consumes some of it on the call path before the user's source even starts. The effective depth limit for nested expressions in `.furqan` source is somewhere around 250 — undocumented, machine-dependent, and not surfaced anywhere in the README or grammar reference. A program written today might parse on the author's machine and fail on a CI runner with a different Python build.
+
+Q10 is whether the parser should publish a guaranteed minimum nesting depth (the smallest construct count it commits to accepting), and whether `_parse_block` and `_parse_expression` should be rewritten to iterative form so the depth limit becomes memory-bound rather than stack-bound. The first is a one-line README addition the day Q9 ships. The second is a multi-day refactor.
+
 ## Resolved
 
 (Empty. Resolved questions are appended here with the version that closed them.)
